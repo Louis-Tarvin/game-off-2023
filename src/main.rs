@@ -5,18 +5,35 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 use bevy::prelude::*;
+use bevy_editor_pls::EditorPlugin;
+use bevy_kira_audio::AudioPlugin;
+use clouds::CloudMaterial;
+use player::PlayerPlugin;
+use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
+
+mod clouds;
+mod map;
+mod player;
+mod states;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_systems(Startup, setup)
+        .add_plugins((
+            DefaultPlugins,
+            AudioPlugin,
+            EditorPlugin::default(),
+            MaterialPlugin::<CloudMaterial>::default(),
+            LoadingPlugin,
+            MenuPlugin,
+            LevelPlugin,
+            PlayerPlugin,
+        ))
+        .add_state::<states::GameState>()
+        .insert_resource(ClearColor(Color::rgb(0.447, 0.867, 0.969)))
+        .insert_resource(AmbientLight {
+            brightness: 1.0,
+            ..Default::default()
+        })
+        .insert_resource(Msaa::Sample4)
         .run();
-}
-
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("icon.png"),
-        ..Default::default()
-    });
 }

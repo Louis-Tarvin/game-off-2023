@@ -10,6 +10,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Player>()
+            .insert_resource(PlayerHistory::default())
             .add_systems(OnEnter(GameState::Level), spawn_player)
             .add_systems(
                 Update,
@@ -20,7 +21,7 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-#[derive(Debug, Clone, Copy, Reflect)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]
 pub enum CardinalDirection {
     North,
     East,
@@ -49,19 +50,19 @@ impl From<CardinalDirection> for Vec3 {
     }
 }
 
-#[derive(Debug, Reflect)]
+#[derive(Debug, Clone, Reflect)]
 pub enum PlayerState {
     Standing(CardinalDirection),
     Climbing(ClimbingState),
 }
 
-#[derive(Debug, Reflect)]
+#[derive(Debug, Clone, Reflect)]
 pub struct ClimbingState {
     direction: CardinalDirection,
     elevation: u8,
 }
 
-#[derive(Debug, Component, Reflect)]
+#[derive(Debug, Clone, Component, Reflect)]
 pub struct Player {
     pub stamina: u16,
     pub grid_pos_x: u8,
@@ -69,7 +70,7 @@ pub struct Player {
     pub state: PlayerState,
 }
 impl Player {
-    pub fn stamina_cost(&self, direction: CardinalDirection, heights: Vec<Vec<u8>>) -> Option<u8> {
+    pub fn _stamina_cost(&self, direction: CardinalDirection, heights: Vec<Vec<u8>>) -> Option<u8> {
         let x = self.grid_pos_x as usize;
         let y = self.grid_pos_y as usize;
         let current_elevation = heights[y][x];
@@ -125,6 +126,18 @@ impl Player {
     pub fn go(&self, direction: CardinalDirection, heights: &Vec<Vec<u8>>) -> Option<Self> {
         let x = self.grid_pos_x as usize;
         let y = self.grid_pos_y as usize;
+
+        // check if changing direction
+        if let PlayerState::Standing(facing) = self.state {
+            if facing != direction {
+                return Some(Self {
+                    stamina: self.stamina,
+                    grid_pos_x: self.grid_pos_x,
+                    grid_pos_y: self.grid_pos_y,
+                    state: PlayerState::Standing(direction),
+                });
+            }
+        }
 
         // check if moving out of bounds
         match direction {
@@ -334,41 +347,60 @@ fn update_player_position(mut query: Query<(&mut Transform, &Player)>, map: Res<
     }
 }
 
-fn player_input(keyboard_input: Res<Input<KeyCode>>, mut query: Query<&mut Player>, map: Res<Map>) {
-    if keyboard_input.just_pressed(KeyCode::W) || keyboard_input.just_pressed(KeyCode::Up) {
+#[derive(Debug, Default, Resource, Reflect)]
+pub struct PlayerHistory(Vec<Player>);
+
+fn player_input(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<&mut Player>,
+    mut player_history: ResMut<PlayerHistory>,
+    map: Res<Map>,
+) {
+    if keyboard_input.any_just_pressed([KeyCode::W, KeyCode::Up]) {
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
         let new_player = player.go(CardinalDirection::North, &map.grid_heights);
         if let Some(new_player) = new_player {
+            player_history.0.push(player.clone());
             *player = new_player;
         }
-    } else if keyboard_input.just_pressed(KeyCode::D) || keyboard_input.just_pressed(KeyCode::Right)
-    {
+    } else if keyboard_input.any_just_pressed([KeyCode::D, KeyCode::Right]) {
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
         let new_player = player.go(CardinalDirection::East, &map.grid_heights);
         if let Some(new_player) = new_player {
+            player_history.0.push(player.clone());
             *player = new_player;
         }
-    } else if keyboard_input.just_pressed(KeyCode::S) || keyboard_input.just_pressed(KeyCode::Down)
-    {
+    } else if keyboard_input.any_just_pressed([KeyCode::S, KeyCode::Down]) {
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
         let new_player = player.go(CardinalDirection::South, &map.grid_heights);
         if let Some(new_player) = new_player {
+            player_history.0.push(player.clone());
             *player = new_player;
         }
-    } else if keyboard_input.just_pressed(KeyCode::A) || keyboard_input.just_pressed(KeyCode::Left)
-    {
+    } else if keyboard_input.any_just_pressed([KeyCode::A, KeyCode::Left]) {
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
         let new_player = player.go(CardinalDirection::West, &map.grid_heights);
         if let Some(new_player) = new_player {
+            player_history.0.push(player.clone());
             *player = new_player;
+        }
+    } else if keyboard_input.just_pressed(KeyCode::Z)
+        && keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
+    {
+        // undo the last move
+        if let Some(old_player) = player_history.0.pop() {
+            let mut player = query
+                .get_single_mut()
+                .expect("There should only be one player");
+            *player = old_player;
         }
     }
 }

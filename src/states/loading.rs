@@ -41,4 +41,8 @@ pub struct TextureAssets {
 pub struct ModelAssets {
     #[asset(path = "models/climber.glb#Scene0")]
     pub climber: Handle<Scene>,
+    #[asset(path = "models/flag.glb#Scene0")]
+    pub flag: Handle<Scene>,
+    #[asset(path = "models/flag.glb#Animation0")]
+    pub flag_animation: Handle<AnimationClip>,
 }

@@ -1,8 +1,11 @@
-use bevy::{pbr::ScreenSpaceAmbientOcclusionBundle, prelude::*, render::camera::ScalingMode};
+use bevy::{prelude::*, render::camera::ScalingMode};
 
-use crate::{clouds::CloudMaterial, map::create_map_on_level_load};
+use crate::{
+    clouds::CloudMaterial,
+    map::{create_map_on_level_load, Map},
+};
 
-use super::GameState;
+use super::{loading::ModelAssets, GameState};
 
 pub struct LevelPlugin;
 
@@ -11,7 +14,8 @@ impl Plugin for LevelPlugin {
         app.add_systems(
             OnEnter(GameState::Level),
             (create_map_on_level_load, setup_scene),
-        );
+        )
+        .add_systems(Update, animate_flag.run_if(in_state(GameState::Level)));
         // .add_systems(
         // Update,
         // ((
@@ -28,7 +32,10 @@ fn setup_scene(
     mut commands: Commands,
     mut cloud_materials: ResMut<Assets<CloudMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    model_assets: Res<ModelAssets>,
+    map: Res<Map>,
 ) {
+    // Spawn orthographic camera
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(1.5, 7., 10.0).looking_at(Vec3::new(2.5, 2.0, 0.0), Vec3::Y),
         projection: Projection::Orthographic(OrthographicProjection {
@@ -39,6 +46,7 @@ fn setup_scene(
     });
     // .insert(ScreenSpaceAmbientOcclusionBundle::default());
 
+    // Spawn main light source
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
@@ -48,6 +56,7 @@ fn setup_scene(
         ..Default::default()
     });
 
+    // Spawn lower clouds
     commands.spawn(MaterialMeshBundle {
         material: cloud_materials.add(CloudMaterial {
             scale: 2.0,
@@ -66,4 +75,28 @@ fn setup_scene(
         transform: Transform::from_xyz(2.5, 0., 3.0),
         ..Default::default()
     });
+
+    // Spawn flagpole
+    commands
+        .spawn(SceneBundle {
+            scene: model_assets.flag.clone(),
+            ..Default::default()
+        })
+        .insert(Transform::from_xyz(
+            map.flag_pos.0 as f32,
+            map.grid_heights[map.flag_pos.1 as usize][map.flag_pos.0 as usize] as f32,
+            map.flag_pos.1 as f32,
+        ))
+        .insert(Name::new("Flag"));
+}
+
+fn animate_flag(
+    model_assets: Res<ModelAssets>,
+    mut players: Query<&mut AnimationPlayer, Added<AnimationPlayer>>,
+) {
+    for mut player in &mut players {
+        player
+            .play(model_assets.flag_animation.clone_weak())
+            .repeat();
+    }
 }

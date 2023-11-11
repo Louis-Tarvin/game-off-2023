@@ -21,10 +21,10 @@ impl CardinalDirection {
 impl From<CardinalDirection> for Vec3 {
     fn from(value: CardinalDirection) -> Self {
         match value {
-            CardinalDirection::North => Vec3::Z,
-            CardinalDirection::East => Vec3::NEG_X,
-            CardinalDirection::South => Vec3::NEG_Z,
-            CardinalDirection::West => Vec3::X,
+            CardinalDirection::North => Vec3::NEG_Z,
+            CardinalDirection::East => Vec3::X,
+            CardinalDirection::South => Vec3::Z,
+            CardinalDirection::West => Vec3::NEG_X,
         }
     }
 }

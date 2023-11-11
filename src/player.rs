@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    equipment::HorizontalLadderKey,
+    equipment::{ladder::HorizontalLadderKey, Inventory},
     map::Map,
     states::{loading::ModelAssets, GameState},
     util::{Alignment, CardinalDirection},
@@ -22,6 +22,11 @@ impl Plugin for PlayerPlugin {
             );
     }
 }
+
+const MOVE_STAMINA: u16 = 1;
+const CLIMB_UP_STAMINA: u16 = 3;
+const CLIMB_SIDEWAYS_STAMINA: u16 = 2;
+const CLIMB_DOWN_STAMINA: u16 = 2;
 
 #[derive(Debug, Clone, Reflect)]
 pub enum PlayerState {
@@ -105,7 +110,7 @@ impl Player {
         }
     }
 
-    pub fn go(&self, direction: CardinalDirection, map: &Map) -> Option<Self> {
+    pub fn go(&self, direction: CardinalDirection, map: &Map, weight: u8) -> Option<Self> {
         let heights = &map.grid_heights;
         let x = self.grid_pos_x as usize;
         let y = self.grid_pos_y as usize;
@@ -159,7 +164,7 @@ impl Player {
                 };
                 // equal elevation
                 if heights[new_y][new_x] == current_elevation {
-                    self.stamina.checked_sub(1).map(|stamina| Self {
+                    self.stamina.checked_sub(MOVE_STAMINA).map(|stamina| Self {
                         stamina,
                         grid_pos_x: new_x as u8,
                         grid_pos_y: new_y as u8,
@@ -183,8 +188,8 @@ impl Player {
                     alignment: direction.into(),
                 }) {
                     // elevation drops -> check if there is a ladder
-                    Some(Self {
-                        stamina: self.stamina,
+                    self.stamina.checked_sub(MOVE_STAMINA).map(|stamina| Self {
+                        stamina,
                         grid_pos_x: new_x as u8,
                         grid_pos_y: new_y as u8,
                         state: PlayerState::StandingOnLadder(LadderState {
@@ -194,8 +199,19 @@ impl Player {
                         }),
                     })
                 } else {
-                    Some(Self {
-                        stamina: self.stamina,
+                    // climbing down
+                    let cost = if map.is_ladder_or_rope(
+                        new_x as u8,
+                        new_y as u8,
+                        current_elevation,
+                        direction.reverse(),
+                    ) {
+                        1
+                    } else {
+                        CLIMB_DOWN_STAMINA
+                    };
+                    self.stamina.checked_sub(cost).map(|stamina| Self {
+                        stamina,
                         grid_pos_x: new_x as u8,
                         grid_pos_y: new_y as u8,
                         state: PlayerState::Climbing(ClimbingState {
@@ -216,9 +232,19 @@ impl Player {
                     // can't climb on boundary so conversion to unsigned is safe
                     let next_x = (x as i16 + x_offset) as usize;
                     let next_y = (y as i16 + y_offset) as usize;
+                    let cost = if map.is_ladder_or_rope(
+                        self.grid_pos_x,
+                        self.grid_pos_y,
+                        climb_state.elevation,
+                        climb_state.direction,
+                    ) {
+                        1
+                    } else {
+                        CLIMB_UP_STAMINA + weight as u16
+                    };
                     if heights[next_y][next_x] == climb_state.elevation {
                         // climb on top
-                        self.stamina.checked_sub(2).map(|stamina| Self {
+                        self.stamina.checked_sub(cost).map(|stamina| Self {
                             stamina,
                             grid_pos_x: (next_x) as u8,
                             grid_pos_y: (next_y) as u8,
@@ -226,7 +252,7 @@ impl Player {
                         })
                     } else {
                         // climb up
-                        self.stamina.checked_sub(5).map(|stamina| Self {
+                        self.stamina.checked_sub(cost).map(|stamina| Self {
                             stamina,
                             grid_pos_x: self.grid_pos_x,
                             grid_pos_y: self.grid_pos_y,
@@ -280,15 +306,17 @@ impl Player {
                         None
                     } else {
                         // move east
-                        self.stamina.checked_sub(2).map(|stamina| Self {
-                            stamina,
-                            grid_pos_x: next_x as u8,
-                            grid_pos_y: next_y as u8,
-                            state: PlayerState::Climbing(ClimbingState {
-                                direction: climb_state.direction,
-                                elevation: climb_state.elevation,
-                            }),
-                        })
+                        self.stamina
+                            .checked_sub(CLIMB_SIDEWAYS_STAMINA)
+                            .map(|stamina| Self {
+                                stamina,
+                                grid_pos_x: next_x as u8,
+                                grid_pos_y: next_y as u8,
+                                state: PlayerState::Climbing(ClimbingState {
+                                    direction: climb_state.direction,
+                                    elevation: climb_state.elevation,
+                                }),
+                            })
                     }
                 }
                 CardinalDirection::South => {
@@ -302,7 +330,17 @@ impl Player {
                         })
                     } else {
                         // climb down
-                        if let Some(stamina) = self.stamina.checked_sub(1) {
+                        let cost = if map.is_ladder_or_rope(
+                            self.grid_pos_x,
+                            self.grid_pos_y,
+                            climb_state.elevation,
+                            climb_state.direction,
+                        ) {
+                            1
+                        } else {
+                            CLIMB_DOWN_STAMINA
+                        };
+                        if let Some(stamina) = self.stamina.checked_sub(cost) {
                             climb_state.elevation.checked_sub(1).map(|elevation| Self {
                                 stamina,
                                 grid_pos_x: self.grid_pos_x,
@@ -360,15 +398,17 @@ impl Player {
                         None
                     } else {
                         // move west
-                        self.stamina.checked_sub(2).map(|stamina| Self {
-                            stamina,
-                            grid_pos_x: next_x as u8,
-                            grid_pos_y: next_y as u8,
-                            state: PlayerState::Climbing(ClimbingState {
-                                direction: climb_state.direction,
-                                elevation: climb_state.elevation,
-                            }),
-                        })
+                        self.stamina
+                            .checked_sub(CLIMB_SIDEWAYS_STAMINA)
+                            .map(|stamina| Self {
+                                stamina,
+                                grid_pos_x: next_x as u8,
+                                grid_pos_y: next_y as u8,
+                                state: PlayerState::Climbing(ClimbingState {
+                                    direction: climb_state.direction,
+                                    elevation: climb_state.elevation,
+                                }),
+                            })
                     }
                 }
             },
@@ -383,8 +423,8 @@ impl Player {
                 if heights[new_y][new_x] == ladder_state.elevation {
                     {
                         // move off ladder
-                        Some(Self {
-                            stamina: self.stamina,
+                        self.stamina.checked_sub(MOVE_STAMINA).map(|stamina| Self {
+                            stamina,
                             grid_pos_x: new_x as u8,
                             grid_pos_y: new_y as u8,
                             state: PlayerState::Standing(direction),
@@ -423,15 +463,12 @@ fn spawn_player(mut commands: Commands, model_assets: Res<ModelAssets>, map: Res
             grid_pos_y: map.player_start_pos.1,
             state: PlayerState::Standing(CardinalDirection::South),
         })
-        .insert(
-            Transform::from_xyz(
-                map.player_start_pos.0 as f32,
-                map.grid_heights[map.player_start_pos.1 as usize][map.player_start_pos.0 as usize]
-                    as f32,
-                map.player_start_pos.1 as f32,
-            )
-            .with_scale(Vec3::splat(0.5)),
-        )
+        .insert(Transform::from_xyz(
+            map.player_start_pos.0 as f32,
+            map.grid_heights[map.player_start_pos.1 as usize][map.player_start_pos.0 as usize]
+                as f32,
+            map.player_start_pos.1 as f32,
+        ))
         .insert(Name::new("Climber"));
 }
 
@@ -479,13 +516,14 @@ fn player_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut query: Query<&mut Player>,
     mut player_history: ResMut<PlayerHistory>,
+    inventory: Res<Inventory>,
     map: Res<Map>,
 ) {
     if keyboard_input.any_just_pressed([KeyCode::W, KeyCode::Up]) {
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::North, &map);
+        let new_player = player.go(CardinalDirection::North, &map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -494,7 +532,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::East, &map);
+        let new_player = player.go(CardinalDirection::East, &map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -503,7 +541,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::South, &map);
+        let new_player = player.go(CardinalDirection::South, &map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -512,7 +550,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::West, &map);
+        let new_player = player.go(CardinalDirection::West, &map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;

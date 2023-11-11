@@ -5,20 +5,11 @@ use bevy::prelude::*;
 use crate::{
     map::Map,
     player::Player,
-    states::{loading::ModelAssets, GameState},
+    states::loading::ModelAssets,
     util::{Alignment, CardinalDirection},
 };
 
-pub struct EquipmentPlugin;
-
-impl Plugin for EquipmentPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<Ladder>().add_systems(
-            Update,
-            handle_ladder_input.run_if(in_state(GameState::Level)),
-        );
-    }
-}
+use super::Inventory;
 
 #[derive(Debug, PartialEq, Eq, Reflect)]
 pub enum LadderOrientation {
@@ -45,11 +36,12 @@ pub struct HorizontalLadderKey {
 #[derive(Debug, Component, Reflect)]
 pub struct Ladder;
 
-fn handle_ladder_input(
+pub fn handle_ladder_input(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
     player_query: Query<&Player>,
     mut map: ResMut<Map>,
+    mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Key1) {
@@ -93,40 +85,42 @@ fn handle_ladder_input(
             }) {
                 Entry::Occupied(o) => {
                     // there is already a ladder -> pick it up
-                    // TODO: add ladder to inventory
+                    inventory.ladder_count += 1;
                     commands.entity(o.remove()).despawn_recursive();
                 }
                 Entry::Vacant(v) => {
                     // no existing ladder -> place it
-                    // TODO: check if in inventory and remove it
-                    let (x_offset, y_offset) = match player_direction {
-                        CardinalDirection::North => (0., -0.47),
-                        CardinalDirection::East => (0.47, 0.),
-                        CardinalDirection::South => (0., 0.47),
-                        CardinalDirection::West => (-0.47, 0.),
-                    };
-                    let entity = commands
-                        .spawn(SceneBundle {
-                            scene: model_assets.ladder.clone(),
-                            transform: Transform::from_xyz(
-                                player.grid_pos_x as f32 + x_offset,
-                                player_height as f32 + 0.5,
-                                player.grid_pos_y as f32 + y_offset,
-                            )
-                            .looking_to(player_direction.into(), Vec3::Y),
-                            ..Default::default()
-                        })
-                        .insert(Ladder)
-                        .insert(Name::new("Vertical Ladder"))
-                        .with_children(|parent| {
-                            parent.spawn(SceneBundle {
+                    if inventory.ladder_count > 0 {
+                        inventory.ladder_count -= 1;
+                        let (x_offset, y_offset) = match player_direction {
+                            CardinalDirection::North => (0., -0.47),
+                            CardinalDirection::East => (0.47, 0.),
+                            CardinalDirection::South => (0., 0.47),
+                            CardinalDirection::West => (-0.47, 0.),
+                        };
+                        let entity = commands
+                            .spawn(SceneBundle {
                                 scene: model_assets.ladder.clone(),
-                                transform: Transform::from_xyz(0., 1., 0.),
+                                transform: Transform::from_xyz(
+                                    player.grid_pos_x as f32 + x_offset,
+                                    player_height as f32 + 0.5,
+                                    player.grid_pos_y as f32 + y_offset,
+                                )
+                                .looking_to(player_direction.into(), Vec3::Y),
                                 ..Default::default()
-                            });
-                        })
-                        .id();
-                    v.insert(entity);
+                            })
+                            .insert(Ladder)
+                            .insert(Name::new("Vertical Ladder"))
+                            .with_children(|parent| {
+                                parent.spawn(SceneBundle {
+                                    scene: model_assets.ladder.clone(),
+                                    transform: Transform::from_xyz(0., 1., 0.),
+                                    ..Default::default()
+                                });
+                            })
+                            .id();
+                        v.insert(entity);
+                    }
                 }
             }
         } else {
@@ -161,41 +155,44 @@ fn handle_ladder_input(
                 match map.horizontal_ladders.entry(key) {
                     Entry::Occupied(o) => {
                         // there is already a ladder -> pick it up
-                        // TODO: add ladder to inventory
+                        inventory.ladder_count += 1;
                         commands.entity(o.remove()).despawn_recursive();
                     }
                     Entry::Vacant(v) => {
                         // no existing ladder -> place it
-                        // TODO: check if in inventory and remove it
-                        let (x_offset, y_offset) = match player_direction {
-                            CardinalDirection::North => (0., -0.47),
-                            CardinalDirection::East => (0.47, 0.),
-                            CardinalDirection::South => (0., 0.47),
-                            CardinalDirection::West => (-0.47, 0.),
-                        };
-                        let mut transform = Transform::from_xyz(
-                            player.grid_pos_x as f32 + x_offset,
-                            player_height as f32,
-                            player.grid_pos_y as f32 + y_offset,
-                        )
-                        .looking_to(player_direction.into(), Vec3::Y);
-                        transform.rotate_local_x(1.571);
-                        let entity = commands
-                            .spawn(SceneBundle {
-                                scene: model_assets.ladder.clone(),
-                                transform,
-                                ..Default::default()
-                            })
-                            .insert(Ladder)
-                            .with_children(|parent| {
-                                parent.spawn(SceneBundle {
+                        if inventory.ladder_count > 0 {
+                            inventory.ladder_count -= 1;
+                            let (x_offset, y_offset) = match player_direction {
+                                CardinalDirection::North => (0., -0.47),
+                                CardinalDirection::East => (0.47, 0.),
+                                CardinalDirection::South => (0., 0.47),
+                                CardinalDirection::West => (-0.47, 0.),
+                            };
+                            let mut transform = Transform::from_xyz(
+                                player.grid_pos_x as f32 + x_offset,
+                                player_height as f32,
+                                player.grid_pos_y as f32 + y_offset,
+                            )
+                            .looking_to(player_direction.reverse().into(), Vec3::Y);
+                            transform.rotate_local_x(1.571);
+                            let entity = commands
+                                .spawn(SceneBundle {
                                     scene: model_assets.ladder.clone(),
-                                    transform: Transform::from_xyz(0., 1., 0.),
+                                    transform,
                                     ..Default::default()
-                                });
-                            })
-                            .id();
-                        v.insert(entity);
+                                })
+                                .insert(Ladder)
+                                .insert(Name::new("Horizontal Ladder"))
+                                .with_children(|parent| {
+                                    parent.spawn(SceneBundle {
+                                        scene: model_assets.ladder.clone(),
+                                        transform: Transform::from_xyz(0., 1., 0.),
+                                        ..Default::default()
+                                    });
+                                })
+                                .id();
+                            v.insert(entity);
+                        }
                     }
                 }
             }

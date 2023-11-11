@@ -8,13 +8,16 @@ use bevy::prelude::*;
 use bevy_editor_pls::EditorPlugin;
 use bevy_kira_audio::AudioPlugin;
 use clouds::CloudMaterial;
+use equipment::EquipmentPlugin;
 use player::PlayerPlugin;
 use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
 
 mod clouds;
+mod equipment;
 mod map;
 mod player;
 mod states;
+mod util;
 
 fn main() {
     App::new()
@@ -27,6 +30,7 @@ fn main() {
             MenuPlugin,
             LevelPlugin,
             PlayerPlugin,
+            EquipmentPlugin,
         ))
         .add_state::<states::GameState>()
         .insert_resource(ClearColor(Color::rgb(0.447, 0.867, 0.969)))

@@ -45,4 +45,10 @@ pub struct ModelAssets {
     pub flag: Handle<Scene>,
     #[asset(path = "models/flag.glb#Animation0")]
     pub flag_animation: Handle<AnimationClip>,
+    #[asset(path = "models/ladder.glb#Scene0")]
+    pub ladder: Handle<Scene>,
+    #[asset(path = "models/rope.glb#Scene0")]
+    pub rope_top: Handle<Scene>,
+    #[asset(path = "models/rope.glb#Scene1")]
+    pub rope: Handle<Scene>,
 }

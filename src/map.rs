@@ -1,10 +1,16 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
+
+use crate::equipment::{HorizontalLadderKey, VerticalLadderKey};
 
 #[derive(Debug, Resource)]
 pub struct Map {
     pub grid_heights: Vec<Vec<u8>>,
     pub player_start_pos: (u8, u8),
     pub flag_pos: (u8, u8),
+    pub vertical_ladders: HashMap<VerticalLadderKey, Entity>,
+    pub horizontal_ladders: HashMap<HorizontalLadderKey, Entity>,
 }
 impl Map {
     pub fn new(grid_heights: Vec<Vec<u8>>, player_pos: (u8, u8), flag_pos: (u8, u8)) -> Self {
@@ -12,6 +18,8 @@ impl Map {
             grid_heights,
             player_start_pos: player_pos,
             flag_pos,
+            vertical_ladders: HashMap::new(),
+            horizontal_ladders: HashMap::new(),
         }
     }
 }

@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
+    equipment::HorizontalLadderKey,
     map::Map,
     states::{loading::ModelAssets, GameState},
+    util::{Alignment, CardinalDirection},
 };
 
 pub struct PlayerPlugin;
@@ -21,45 +23,24 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Reflect)]
-pub enum CardinalDirection {
-    North,
-    East,
-    South,
-    West,
-}
-impl CardinalDirection {
-    fn reverse(&self) -> Self {
-        match self {
-            CardinalDirection::North => CardinalDirection::South,
-            CardinalDirection::East => CardinalDirection::West,
-            CardinalDirection::South => CardinalDirection::North,
-            CardinalDirection::West => CardinalDirection::East,
-        }
-    }
-}
-
-impl From<CardinalDirection> for Vec3 {
-    fn from(value: CardinalDirection) -> Self {
-        match value {
-            CardinalDirection::North => Vec3::Z,
-            CardinalDirection::East => Vec3::NEG_X,
-            CardinalDirection::South => Vec3::NEG_Z,
-            CardinalDirection::West => Vec3::X,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Reflect)]
 pub enum PlayerState {
     Standing(CardinalDirection),
     Climbing(ClimbingState),
+    StandingOnLadder(LadderState),
 }
 
 #[derive(Debug, Clone, Reflect)]
 pub struct ClimbingState {
-    direction: CardinalDirection,
-    elevation: u8,
+    pub direction: CardinalDirection,
+    pub elevation: u8,
+}
+
+#[derive(Debug, Clone, Reflect)]
+pub struct LadderState {
+    pub direction: CardinalDirection,
+    pub elevation: u8,
+    pub alignment: Alignment,
 }
 
 #[derive(Debug, Clone, Component, Reflect)]
@@ -120,10 +101,12 @@ impl Player {
                     }
                 }
             },
+            PlayerState::StandingOnLadder(_) => todo!(),
         }
     }
 
-    pub fn go(&self, direction: CardinalDirection, heights: &Vec<Vec<u8>>) -> Option<Self> {
+    pub fn go(&self, direction: CardinalDirection, map: &Map) -> Option<Self> {
+        let heights = &map.grid_heights;
         let x = self.grid_pos_x as usize;
         let y = self.grid_pos_y as usize;
 
@@ -140,74 +123,105 @@ impl Player {
         }
 
         // check if moving out of bounds
-        match direction {
-            CardinalDirection::North => {
-                if y == 0 {
-                    return None;
+        if let PlayerState::Standing(_) = self.state {
+            match direction {
+                CardinalDirection::North => {
+                    if y == 0 {
+                        return None;
+                    }
                 }
-            }
-            CardinalDirection::East => {
-                if x == heights[0].len() - 1 {
-                    return None;
+                CardinalDirection::East => {
+                    if x == heights[0].len() - 1 {
+                        return None;
+                    }
                 }
-            }
-            CardinalDirection::South => {
-                if let PlayerState::Standing(_) = self.state {
+                CardinalDirection::South => {
                     if y == heights.len() - 1 {
                         return None;
                     }
                 }
-            }
-            CardinalDirection::West => {
-                if x == 0 {
-                    return None;
+                CardinalDirection::West => {
+                    if x == 0 {
+                        return None;
+                    }
                 }
             }
         }
 
         let current_elevation = heights[y][x];
-        let (new_x, new_y) = match direction {
-            CardinalDirection::North => (x, y - 1),
-            CardinalDirection::East => (x + 1, y),
-            CardinalDirection::South => (x, y + 1),
-            CardinalDirection::West => (x - 1, y),
-        };
         match &self.state {
-            PlayerState::Standing(_) if heights[new_y][new_x] == current_elevation => {
-                self.stamina.checked_sub(1).map(|stamina| Self {
-                    stamina,
-                    grid_pos_x: new_x as u8,
-                    grid_pos_y: new_y as u8,
-                    state: PlayerState::Standing(direction),
-                })
+            PlayerState::Standing(_) => {
+                let (new_x, new_y) = match direction {
+                    CardinalDirection::North => (x, y - 1),
+                    CardinalDirection::East => (x + 1, y),
+                    CardinalDirection::South => (x, y + 1),
+                    CardinalDirection::West => (x - 1, y),
+                };
+                // equal elevation
+                if heights[new_y][new_x] == current_elevation {
+                    self.stamina.checked_sub(1).map(|stamina| Self {
+                        stamina,
+                        grid_pos_x: new_x as u8,
+                        grid_pos_y: new_y as u8,
+                        state: PlayerState::Standing(direction),
+                    })
+                } else if heights[new_y][new_x] > current_elevation {
+                    // cling to wall
+                    Some(Self {
+                        stamina: self.stamina,
+                        grid_pos_x: self.grid_pos_x,
+                        grid_pos_y: self.grid_pos_y,
+                        state: PlayerState::Climbing(ClimbingState {
+                            direction,
+                            elevation: current_elevation + 1,
+                        }),
+                    })
+                } else if map.horizontal_ladders.contains_key(&HorizontalLadderKey {
+                    x: new_x as u8,
+                    y: new_y as u8,
+                    height: current_elevation,
+                    alignment: direction.into(),
+                }) {
+                    // elevation drops -> check if there is a ladder
+                    Some(Self {
+                        stamina: self.stamina,
+                        grid_pos_x: new_x as u8,
+                        grid_pos_y: new_y as u8,
+                        state: PlayerState::StandingOnLadder(LadderState {
+                            direction,
+                            elevation: current_elevation,
+                            alignment: direction.into(),
+                        }),
+                    })
+                } else {
+                    Some(Self {
+                        stamina: self.stamina,
+                        grid_pos_x: new_x as u8,
+                        grid_pos_y: new_y as u8,
+                        state: PlayerState::Climbing(ClimbingState {
+                            direction: direction.reverse(),
+                            elevation: current_elevation,
+                        }),
+                    })
+                }
             }
-            PlayerState::Standing(_) if heights[new_y][new_x] > current_elevation => Some(Self {
-                stamina: self.stamina,
-                grid_pos_x: self.grid_pos_x,
-                grid_pos_y: self.grid_pos_y,
-                state: PlayerState::Climbing(ClimbingState {
-                    direction,
-                    elevation: current_elevation + 1,
-                }),
-            }),
-            PlayerState::Standing(_) => Some(Self {
-                stamina: self.stamina,
-                grid_pos_x: new_x as u8,
-                grid_pos_y: new_y as u8,
-                state: PlayerState::Climbing(ClimbingState {
-                    direction: direction.reverse(),
-                    elevation: current_elevation,
-                }),
-            }),
             PlayerState::Climbing(climb_state) => match direction {
                 CardinalDirection::North => {
-                    // TODO: fix cases when not facing north
-                    if heights[y - 1][x] == climb_state.elevation {
+                    let (x_offset, y_offset) = match &climb_state.direction {
+                        CardinalDirection::North => (0, -1),
+                        CardinalDirection::East => (1, 0),
+                        CardinalDirection::South => (0, 1),
+                        CardinalDirection::West => (-1, 0),
+                    };
+                    // can't climb on boundary so conversion to unsigned is safe
+                    let next_x = (x as i16 + x_offset) as usize;
+                    let next_y = (y as i16 + y_offset) as usize;
+                    if heights[next_y][next_x] == climb_state.elevation {
                         // climb on top
                         self.stamina.checked_sub(2).map(|stamina| Self {
                             stamina,
-                            grid_pos_x: self.grid_pos_x,
-                            grid_pos_y: self.grid_pos_y - 1,
+                            grid_pos_x: (next_x) as u8,
+                            grid_pos_y: (next_y) as u8,
                             state: PlayerState::Standing(climb_state.direction),
                         })
                     } else {
@@ -217,16 +231,50 @@ impl Player {
                             grid_pos_x: self.grid_pos_x,
                             grid_pos_y: self.grid_pos_y,
                             state: PlayerState::Climbing(ClimbingState {
-                                direction,
+                                direction: climb_state.direction,
                                 elevation: climb_state.elevation + 1,
                             }),
                         })
                     }
                 }
                 CardinalDirection::East => {
-                    // TODO: fix cases when not facing north
-                    if heights[y][x + 1] >= climb_state.elevation
-                        || heights[y - 1][x + 1] < climb_state.elevation
+                    let (x_offset, y_offset) = match &climb_state.direction {
+                        CardinalDirection::North => (1, 0),
+                        CardinalDirection::East => (0, 1),
+                        CardinalDirection::South => (-1, 0),
+                        CardinalDirection::West => (0, -1),
+                    };
+                    // grid square moving to
+                    let next_x = x as i16 + x_offset;
+                    let next_y = y as i16 + y_offset;
+                    if next_x < 0
+                        || next_x as usize >= heights[0].len()
+                        || next_y < 0
+                        || next_y as usize >= heights.len()
+                    {
+                        // out of bounds
+                        return None;
+                    }
+                    let (x_offset, y_offset) = match &climb_state.direction {
+                        CardinalDirection::North => (1, -1),
+                        CardinalDirection::East => (1, 1),
+                        CardinalDirection::South => (-1, 1),
+                        CardinalDirection::West => (-1, -1),
+                    };
+                    // grid square that will be clung to
+                    let next_wall_x = x as i16 + x_offset;
+                    let next_wall_y = y as i16 + y_offset;
+                    if next_wall_x < 0
+                        || next_wall_x as usize >= heights[0].len()
+                        || next_wall_y < 0
+                        || next_wall_y as usize >= heights.len()
+                    {
+                        // out of bounds
+                        return None;
+                    }
+                    if heights[next_y as usize][next_x as usize] >= climb_state.elevation
+                        || heights[next_wall_y as usize][next_wall_x as usize]
+                            < climb_state.elevation
                     {
                         // no valid climb spot to the east
                         None
@@ -234,8 +282,8 @@ impl Player {
                         // move east
                         self.stamina.checked_sub(2).map(|stamina| Self {
                             stamina,
-                            grid_pos_x: self.grid_pos_x + 1,
-                            grid_pos_y: self.grid_pos_y,
+                            grid_pos_x: next_x as u8,
+                            grid_pos_y: next_y as u8,
                             state: PlayerState::Climbing(ClimbingState {
                                 direction: climb_state.direction,
                                 elevation: climb_state.elevation,
@@ -270,18 +318,52 @@ impl Player {
                     }
                 }
                 CardinalDirection::West => {
-                    // TODO: fix cases when not facing north
-                    if heights[y][x - 1] >= climb_state.elevation
-                        || heights[y - 1][x - 1] < climb_state.elevation
+                    let (x_offset, y_offset) = match &climb_state.direction {
+                        CardinalDirection::North => (-1, 0),
+                        CardinalDirection::East => (0, -1),
+                        CardinalDirection::South => (1, 0),
+                        CardinalDirection::West => (0, 1),
+                    };
+                    // grid square moving to
+                    let next_x = x as i16 + x_offset;
+                    let next_y = y as i16 + y_offset;
+                    if next_x < 0
+                        || next_x as usize >= heights[0].len()
+                        || next_y < 0
+                        || next_y as usize >= heights.len()
                     {
-                        // no valid climb spot to the east
+                        // out of bounds
+                        return None;
+                    }
+                    let (x_offset, y_offset) = match &climb_state.direction {
+                        CardinalDirection::North => (-1, -1),
+                        CardinalDirection::East => (1, -1),
+                        CardinalDirection::South => (1, 1),
+                        CardinalDirection::West => (-1, 1),
+                    };
+                    // grid square that will be clung to
+                    let next_wall_x = x as i16 + x_offset;
+                    let next_wall_y = y as i16 + y_offset;
+                    if next_wall_x < 0
+                        || next_wall_x as usize >= heights[0].len()
+                        || next_wall_y < 0
+                        || next_wall_y as usize >= heights.len()
+                    {
+                        // out of bounds
+                        return None;
+                    }
+                    if heights[next_y as usize][next_x as usize] >= climb_state.elevation
+                        || heights[next_wall_y as usize][next_wall_x as usize]
+                            < climb_state.elevation
+                    {
+                        // no valid climb spot to the west
                         None
                     } else {
-                        // move east
+                        // move west
                         self.stamina.checked_sub(2).map(|stamina| Self {
                             stamina,
-                            grid_pos_x: self.grid_pos_x - 1,
-                            grid_pos_y: self.grid_pos_y,
+                            grid_pos_x: next_x as u8,
+                            grid_pos_y: next_y as u8,
                             state: PlayerState::Climbing(ClimbingState {
                                 direction: climb_state.direction,
                                 elevation: climb_state.elevation,
@@ -290,6 +372,41 @@ impl Player {
                     }
                 }
             },
+            PlayerState::StandingOnLadder(ladder_state) => {
+                let (new_x, new_y) = match direction {
+                    CardinalDirection::North => (x, y - 1),
+                    CardinalDirection::East => (x + 1, y),
+                    CardinalDirection::South => (x, y + 1),
+                    CardinalDirection::West => (x - 1, y),
+                };
+                #[allow(clippy::comparison_chain)]
+                if heights[new_y][new_x] == ladder_state.elevation {
+                    {
+                        // move off ladder
+                        Some(Self {
+                            stamina: self.stamina,
+                            grid_pos_x: new_x as u8,
+                            grid_pos_y: new_y as u8,
+                            state: PlayerState::Standing(direction),
+                        })
+                    }
+                } else if heights[new_y][new_x] > ladder_state.elevation {
+                    {
+                        // climb off ladder
+                        Some(Self {
+                            stamina: self.stamina,
+                            grid_pos_x: new_x as u8,
+                            grid_pos_y: new_y as u8,
+                            state: PlayerState::Climbing(ClimbingState {
+                                direction,
+                                elevation: ladder_state.elevation + 1,
+                            }),
+                        })
+                    }
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -343,6 +460,14 @@ fn update_player_position(mut query: Query<(&mut Transform, &Player)>, map: Res<
                     player.grid_pos_y as f32 + y_offset,
                 )
             }
+            PlayerState::StandingOnLadder(ladder_state) => {
+                transform.translation = Vec3::new(
+                    player.grid_pos_x as f32,
+                    ladder_state.elevation as f32,
+                    player.grid_pos_y as f32,
+                );
+                transform.look_to(ladder_state.direction.into(), Vec3::Y);
+            }
         }
     }
 }
@@ -360,7 +485,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::North, &map.grid_heights);
+        let new_player = player.go(CardinalDirection::North, &map);
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -369,7 +494,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::East, &map.grid_heights);
+        let new_player = player.go(CardinalDirection::East, &map);
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -378,7 +503,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::South, &map.grid_heights);
+        let new_player = player.go(CardinalDirection::South, &map);
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -387,7 +512,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::West, &map.grid_heights);
+        let new_player = player.go(CardinalDirection::West, &map);
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;

@@ -7,10 +7,11 @@ use crate::{
         ladder::{HorizontalLadderKey, VerticalLadderKey},
         rope::RopeKey,
     },
+    states::level::LevelManager,
     util::CardinalDirection,
 };
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Resource, Reflect)]
 pub struct Map {
     pub grid_heights: Vec<Vec<u8>>,
     pub player_start_pos: (u8, u8),
@@ -52,7 +53,6 @@ impl Map {
             Ok(x) => x,
             Err(_) => return false,
         };
-        println!("{:?}", self.vertical_ladders);
         self.vertical_ladders.contains_key(&VerticalLadderKey {
             x: grid_facing_x,
             y: grid_facing_y,
@@ -80,8 +80,9 @@ pub fn create_map_on_level_load(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    map: Res<Map>,
+    level_manager: Res<LevelManager>,
 ) {
+    let map = &level_manager.get_current_level().map;
     for y in 0..map.grid_heights.len() {
         for x in 0..map.grid_heights[0].len() {
             commands.spawn(MaterialMeshBundle {

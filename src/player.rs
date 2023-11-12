@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     equipment::{ladder::HorizontalLadderKey, Inventory},
     map::Map,
-    states::{loading::ModelAssets, GameState},
+    states::{level::LevelManager, loading::ModelAssets, GameState},
     util::{Alignment, CardinalDirection},
 };
 
@@ -24,7 +24,7 @@ impl Plugin for PlayerPlugin {
 }
 
 const MOVE_STAMINA: u16 = 1;
-const CLIMB_UP_STAMINA: u16 = 3;
+const CLIMB_UP_STAMINA: u16 = 4;
 const CLIMB_SIDEWAYS_STAMINA: u16 = 2;
 const CLIMB_DOWN_STAMINA: u16 = 2;
 
@@ -451,14 +451,19 @@ impl Player {
     }
 }
 
-fn spawn_player(mut commands: Commands, model_assets: Res<ModelAssets>, map: Res<Map>) {
+fn spawn_player(
+    mut commands: Commands,
+    model_assets: Res<ModelAssets>,
+    level_manager: Res<LevelManager>,
+) {
+    let map = &level_manager.get_current_level().map;
     commands
         .spawn(SceneBundle {
             scene: model_assets.climber.clone(),
             ..Default::default()
         })
         .insert(Player {
-            stamina: 100,
+            stamina: level_manager.get_current_level().stamina_budget,
             grid_pos_x: map.player_start_pos.0,
             grid_pos_y: map.player_start_pos.1,
             state: PlayerState::Standing(CardinalDirection::South),
@@ -472,13 +477,17 @@ fn spawn_player(mut commands: Commands, model_assets: Res<ModelAssets>, map: Res
         .insert(Name::new("Climber"));
 }
 
-fn update_player_position(mut query: Query<(&mut Transform, &Player)>, map: Res<Map>) {
+fn update_player_position(
+    mut query: Query<(&mut Transform, &Player)>,
+    level_manager: Res<LevelManager>,
+) {
     for (mut transform, player) in query.iter_mut() {
         match &player.state {
             PlayerState::Standing(direction) => {
                 transform.translation = Vec3::new(
                     player.grid_pos_x as f32,
-                    map.grid_heights[player.grid_pos_y as usize][player.grid_pos_x as usize] as f32,
+                    level_manager.get_current_level().map.grid_heights[player.grid_pos_y as usize]
+                        [player.grid_pos_x as usize] as f32,
                     player.grid_pos_y as f32,
                 );
                 transform.look_to((*direction).into(), Vec3::Y);
@@ -517,13 +526,14 @@ fn player_input(
     mut query: Query<&mut Player>,
     mut player_history: ResMut<PlayerHistory>,
     inventory: Res<Inventory>,
-    map: Res<Map>,
+    level_manager: Res<LevelManager>,
 ) {
+    let map = &level_manager.get_current_level().map;
     if keyboard_input.any_just_pressed([KeyCode::W, KeyCode::Up]) {
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::North, &map, inventory.weight());
+        let new_player = player.go(CardinalDirection::North, map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -532,7 +542,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::East, &map, inventory.weight());
+        let new_player = player.go(CardinalDirection::East, map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -541,7 +551,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::South, &map, inventory.weight());
+        let new_player = player.go(CardinalDirection::South, map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;
@@ -550,7 +560,7 @@ fn player_input(
         let mut player = query
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::West, &map, inventory.weight());
+        let new_player = player.go(CardinalDirection::West, map, inventory.weight());
         if let Some(new_player) = new_player {
             player_history.0.push(player.clone());
             *player = new_player;

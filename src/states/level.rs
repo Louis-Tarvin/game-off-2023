@@ -2,7 +2,15 @@ use bevy::{prelude::*, render::camera::ScalingMode};
 
 use crate::{
     clouds::CloudMaterial,
+    equipment::Inventory,
     map::{create_map_on_level_load, Map},
+    ui::{
+        equipment::{
+            draw_equimpment_cards, handle_add_buttons, handle_subtract_buttons,
+            update_inventory_counters,
+        },
+        stamina::{setup_stamina_ui, update_stamina_ui},
+    },
 };
 
 use super::{loading::ModelAssets, GameState};
@@ -13,19 +21,81 @@ impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             OnEnter(GameState::Level),
-            (create_map_on_level_load, setup_scene),
+            (
+                create_map_on_level_load,
+                setup_scene,
+                setup_stamina_ui,
+                draw_equimpment_cards,
+            ),
         )
-        .add_systems(Update, animate_flag.run_if(in_state(GameState::Level)));
-        // .add_systems(
-        // Update,
-        // ((
-        // rotate_cube,
-        // update_camera_transform,
-        // moving_platform::move_platforms,
-        // )
-        // .run_if(in_state(GameState::Playing)),),
-        // );
+        .add_systems(
+            Update,
+            (
+                animate_flag,
+                update_stamina_ui,
+                handle_add_buttons,
+                handle_subtract_buttons,
+            )
+                .run_if(in_state(GameState::Level)),
+        )
+        .add_systems(
+            Update,
+            update_inventory_counters.run_if(resource_changed::<Inventory>()),
+        );
     }
+}
+
+#[derive(Debug)]
+pub struct Level {
+    pub map: Map,
+    pub stamina_budget: u16,
+}
+
+#[derive(Debug, Resource)]
+pub struct LevelManager {
+    pub levels: Vec<Level>,
+    pub current: usize,
+}
+impl LevelManager {
+    pub fn get_current_level(&self) -> &Level {
+        &self.levels[self.current]
+    }
+    pub fn get_current_map_mut(&mut self) -> &mut Map {
+        &mut self.levels[self.current].map
+    }
+}
+
+pub fn init_level_manager(mut commands: Commands) {
+    commands.insert_resource(LevelManager {
+        current: 0,
+        levels: vec![
+            Level {
+                map: Map::new(
+                    vec![
+                        vec![8, 7, 7, 6],
+                        vec![6, 5, 5, 5],
+                        vec![3, 3, 3, 3],
+                        vec![2, 1, 1, 1],
+                    ],
+                    (1, 3),
+                    (2, 0),
+                ),
+                stamina_budget: 17,
+            },
+            Level {
+                map: Map::new(
+                    vec![
+                        vec![5, 6, 6, 5, 6, 4],
+                        vec![2, 3, 3, 2, 3, 3],
+                        vec![1, 3, 1, 2, 3, 1],
+                    ],
+                    (0, 2),
+                    (5, 0),
+                ),
+                stamina_budget: 30,
+            },
+        ],
+    })
 }
 
 fn setup_scene(
@@ -33,7 +103,7 @@ fn setup_scene(
     mut cloud_materials: ResMut<Assets<CloudMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     model_assets: Res<ModelAssets>,
-    map: Res<Map>,
+    level_manager: Res<LevelManager>,
 ) {
     // Spawn orthographic camera
     commands.spawn(Camera3dBundle {
@@ -77,6 +147,7 @@ fn setup_scene(
     });
 
     // Spawn flagpole
+    let map = &level_manager.get_current_level().map;
     commands
         .spawn(SceneBundle {
             scene: model_assets.flag.clone(),

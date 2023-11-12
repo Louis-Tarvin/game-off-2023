@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 
-use crate::map::Map;
-
-use super::{loading::FontAssets, GameState};
+use super::{level::init_level_manager, loading::FontAssets, GameState};
 
 pub struct MenuPlugin;
 
@@ -11,7 +9,10 @@ pub struct MenuPlugin;
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ButtonColors>()
-            .add_systems(OnEnter(GameState::MainMenu), setup_menu)
+            .add_systems(
+                OnEnter(GameState::MainMenu),
+                (setup_menu, init_level_manager),
+            )
             .add_systems(
                 Update,
                 click_play_button.run_if(in_state(GameState::MainMenu)),
@@ -71,7 +72,6 @@ fn setup_menu(
 }
 
 fn click_play_button(
-    mut commands: Commands,
     button_colors: Res<ButtonColors>,
     mut state: ResMut<NextState<GameState>>,
     mut interaction_query: Query<
@@ -82,15 +82,6 @@ fn click_play_button(
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
-                commands.insert_resource(Map::new(
-                    vec![
-                        vec![5, 6, 6, 5, 6, 4],
-                        vec![2, 3, 3, 2, 3, 3],
-                        vec![1, 3, 1, 2, 3, 1],
-                    ],
-                    (0, 2),
-                    (5, 0),
-                ));
                 state.set(GameState::Level);
             }
             Interaction::Hovered => {

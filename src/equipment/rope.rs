@@ -3,15 +3,14 @@ use std::collections::hash_map::Entry;
 use bevy::prelude::*;
 
 use crate::{
-    map::Map,
     player::{Player, PlayerState},
-    states::loading::ModelAssets,
+    states::{level::LevelManager, loading::ModelAssets},
     util::CardinalDirection,
 };
 
 use super::Inventory;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Reflect)]
 pub struct RopeKey {
     pub x: u8,
     pub y: u8,
@@ -22,11 +21,12 @@ pub fn handle_rope_input(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
     player_query: Query<&Player>,
-    mut map: ResMut<Map>,
+    mut level_manager: ResMut<LevelManager>,
     mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Key2) {
+        let map = level_manager.get_current_map_mut();
         let player = player_query
             .get_single()
             .expect("There should only be one player");

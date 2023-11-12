@@ -17,6 +17,7 @@ mod equipment;
 mod map;
 mod player;
 mod states;
+mod ui;
 mod util;
 
 fn main() {

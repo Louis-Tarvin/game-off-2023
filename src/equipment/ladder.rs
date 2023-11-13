@@ -1,9 +1,10 @@
-use std::collections::hash_map::Entry;
+use std::collections::hash_map::{Entry, VacantEntry};
 
 use bevy::prelude::*;
 
 use crate::{
-    player::Player,
+    map::Map,
+    player::{Player, PlayerHistory, PlayerHistoryEvent},
     states::{level::LevelManager, loading::ModelAssets},
     util::{Alignment, CardinalDirection},
 };
@@ -16,7 +17,7 @@ pub enum LadderOrientation {
     Vertical,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Reflect)]
+#[derive(Debug, PartialEq, Eq, Hash, Reflect, Clone)]
 pub struct VerticalLadderKey {
     pub x: u8,
     pub y: u8,
@@ -24,7 +25,7 @@ pub struct VerticalLadderKey {
     pub direction: CardinalDirection,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Reflect)]
+#[derive(Debug, PartialEq, Eq, Hash, Reflect, Clone)]
 pub struct HorizontalLadderKey {
     pub x: u8,
     pub y: u8,
@@ -35,6 +36,115 @@ pub struct HorizontalLadderKey {
 #[derive(Debug, Component, Reflect)]
 pub struct Ladder;
 
+fn is_valid_vertical_ladder_placement(
+    map: &Map,
+    grid_facing_x: i16,
+    grid_facing_y: i16,
+    player_height: u8,
+) -> bool {
+    grid_facing_x >= 0
+        && grid_facing_x < map.grid_heights[0].len() as i16
+        && grid_facing_y >= 0
+        && grid_facing_y < map.grid_heights.len() as i16
+        && map.grid_heights[grid_facing_y as usize][grid_facing_x as usize] >= player_height + 2
+}
+
+fn is_valid_horizontal_ladder_placement(
+    map: &Map,
+    grid_facing_x: i16,
+    grid_facing_y: i16,
+    grid_facing_x_2: i16,
+    grid_facing_y_2: i16,
+    player_height: u8,
+) -> bool {
+    grid_facing_x >= 0
+        && grid_facing_x < map.grid_heights[0].len() as i16
+        && grid_facing_y >= 0
+        && grid_facing_y < map.grid_heights.len() as i16
+        && grid_facing_x_2 >= 0
+        && grid_facing_x_2 < map.grid_heights[0].len() as i16
+        && grid_facing_y_2 >= 0
+        && grid_facing_y_2 < map.grid_heights.len() as i16
+        && ((map.grid_heights[grid_facing_y as usize][grid_facing_x as usize] <= player_height
+            && map.grid_heights[grid_facing_y_2 as usize][grid_facing_x_2 as usize]
+                == player_height)
+            || (map.grid_heights[grid_facing_y as usize][grid_facing_x as usize] == player_height
+                && map.grid_heights[grid_facing_y_2 as usize][grid_facing_x_2 as usize]
+                    <= player_height))
+}
+
+pub fn place_vertical_ladder(
+    mut commands: Commands,
+    ladder_scn: Handle<Scene>,
+    direction: CardinalDirection,
+    x: f32,
+    y: f32,
+    height: f32,
+    v: VacantEntry<VerticalLadderKey, Entity>,
+) {
+    let (x_offset, y_offset) = match direction {
+        CardinalDirection::North => (0., -0.47),
+        CardinalDirection::East => (0.47, 0.),
+        CardinalDirection::South => (0., 0.47),
+        CardinalDirection::West => (-0.47, 0.),
+    };
+    let entity = commands
+        .spawn(SceneBundle {
+            scene: ladder_scn.clone(),
+            transform: Transform::from_xyz(x + x_offset, height + 0.5, y + y_offset)
+                .looking_to(direction.into(), Vec3::Y),
+            ..Default::default()
+        })
+        .insert(Ladder)
+        .insert(Name::new("Vertical Ladder"))
+        .with_children(|parent| {
+            parent.spawn(SceneBundle {
+                scene: ladder_scn,
+                transform: Transform::from_xyz(0., 1., 0.),
+                ..Default::default()
+            });
+        })
+        .id();
+    v.insert(entity);
+}
+
+pub fn place_horizontal_ladder(
+    mut commands: Commands,
+    ladder_scn: Handle<Scene>,
+    direction: CardinalDirection,
+    x: f32,
+    y: f32,
+    height: f32,
+    v: VacantEntry<HorizontalLadderKey, Entity>,
+) {
+    let (x_offset, y_offset) = match direction {
+        CardinalDirection::North => (0., -0.47),
+        CardinalDirection::East => (0.47, 0.),
+        CardinalDirection::South => (0., 0.47),
+        CardinalDirection::West => (-0.47, 0.),
+    };
+    let mut transform = Transform::from_xyz(x + x_offset, height, y + y_offset)
+        .looking_to(direction.reverse().into(), Vec3::Y);
+    transform.rotate_local_x(1.571);
+    let entity = commands
+        .spawn(SceneBundle {
+            scene: ladder_scn.clone(),
+            transform,
+            ..Default::default()
+        })
+        .insert(Ladder)
+        .insert(Name::new("Horizontal Ladder"))
+        .with_children(|parent| {
+            parent.spawn(SceneBundle {
+                scene: ladder_scn,
+                transform: Transform::from_xyz(0., 1., 0.),
+                ..Default::default()
+            });
+        })
+        .id();
+    v.insert(entity);
+}
+
 pub fn handle_ladder_input(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
@@ -42,6 +152,7 @@ pub fn handle_ladder_input(
     mut level_manager: ResMut<LevelManager>,
     mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
+    mut player_history: ResMut<PlayerHistory>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Key1) {
         let map = level_manager.get_current_map_mut();
@@ -71,55 +182,38 @@ pub fn handle_ladder_input(
         let grid_facing_y = player.grid_pos_y as i16 + y_offset;
 
         // Check if there is a valid vertical ladder placement
-        if grid_facing_x >= 0
-            && grid_facing_x < map.grid_heights[0].len() as i16
-            && grid_facing_y >= 0
-            && grid_facing_y < map.grid_heights.len() as i16
-            && map.grid_heights[grid_facing_y as usize][grid_facing_x as usize] >= player_height + 2
-        {
-            match map.vertical_ladders.entry(VerticalLadderKey {
+        if is_valid_vertical_ladder_placement(map, grid_facing_x, grid_facing_y, player_height) {
+            let key = VerticalLadderKey {
                 x: grid_facing_x as u8,
                 y: grid_facing_y as u8,
                 height: player_height,
                 direction: player_direction,
-            }) {
+            };
+            match map.vertical_ladders.entry(key.clone()) {
                 Entry::Occupied(o) => {
                     // there is already a ladder -> pick it up
                     inventory.ladder_count += 1;
                     commands.entity(o.remove()).despawn_recursive();
+                    player_history
+                        .0
+                        .push(PlayerHistoryEvent::PickUpVerticalLadder(key));
                 }
                 Entry::Vacant(v) => {
                     // no existing ladder -> place it
                     if inventory.ladder_count > 0 {
                         inventory.ladder_count -= 1;
-                        let (x_offset, y_offset) = match player_direction {
-                            CardinalDirection::North => (0., -0.47),
-                            CardinalDirection::East => (0.47, 0.),
-                            CardinalDirection::South => (0., 0.47),
-                            CardinalDirection::West => (-0.47, 0.),
-                        };
-                        let entity = commands
-                            .spawn(SceneBundle {
-                                scene: model_assets.ladder.clone(),
-                                transform: Transform::from_xyz(
-                                    player.grid_pos_x as f32 + x_offset,
-                                    player_height as f32 + 0.5,
-                                    player.grid_pos_y as f32 + y_offset,
-                                )
-                                .looking_to(player_direction.into(), Vec3::Y),
-                                ..Default::default()
-                            })
-                            .insert(Ladder)
-                            .insert(Name::new("Vertical Ladder"))
-                            .with_children(|parent| {
-                                parent.spawn(SceneBundle {
-                                    scene: model_assets.ladder.clone(),
-                                    transform: Transform::from_xyz(0., 1., 0.),
-                                    ..Default::default()
-                                });
-                            })
-                            .id();
-                        v.insert(entity);
+                        place_vertical_ladder(
+                            commands,
+                            model_assets.ladder.clone(),
+                            player_direction,
+                            player.grid_pos_x as f32,
+                            player.grid_pos_y as f32,
+                            player_height as f32,
+                            v,
+                        );
+                        player_history
+                            .0
+                            .push(PlayerHistoryEvent::PlaceVerticalLadder(key));
                     }
                 }
             }
@@ -129,30 +223,21 @@ pub fn handle_ladder_input(
             let grid_facing_y_2 = player.grid_pos_y as i16 + (y_offset * 2);
 
             // Check if there is a valid horizontal ladder placement
-            if grid_facing_x >= 0
-                && grid_facing_x < map.grid_heights[0].len() as i16
-                && grid_facing_y >= 0
-                && grid_facing_y < map.grid_heights.len() as i16
-                && grid_facing_x_2 >= 0
-                && grid_facing_x_2 < map.grid_heights[0].len() as i16
-                && grid_facing_y_2 >= 0
-                && grid_facing_y_2 < map.grid_heights.len() as i16
-                && ((map.grid_heights[grid_facing_y as usize][grid_facing_x as usize]
-                    <= player_height
-                    && map.grid_heights[grid_facing_y_2 as usize][grid_facing_x_2 as usize]
-                        == player_height)
-                    || (map.grid_heights[grid_facing_y as usize][grid_facing_x as usize]
-                        == player_height
-                        && map.grid_heights[grid_facing_y_2 as usize][grid_facing_x_2 as usize]
-                            <= player_height))
-            {
+            if is_valid_horizontal_ladder_placement(
+                map,
+                grid_facing_x,
+                grid_facing_y,
+                grid_facing_x_2,
+                grid_facing_y_2,
+                player_height,
+            ) {
                 let key = HorizontalLadderKey {
                     x: grid_facing_x as u8,
                     y: grid_facing_y as u8,
                     height: player_height,
                     alignment: player_direction.into(),
                 };
-                match map.horizontal_ladders.entry(key) {
+                match map.horizontal_ladders.entry(key.clone()) {
                     Entry::Occupied(o) => {
                         // there is already a ladder -> pick it up
                         inventory.ladder_count += 1;
@@ -162,36 +247,18 @@ pub fn handle_ladder_input(
                         // no existing ladder -> place it
                         if inventory.ladder_count > 0 {
                             inventory.ladder_count -= 1;
-                            let (x_offset, y_offset) = match player_direction {
-                                CardinalDirection::North => (0., -0.47),
-                                CardinalDirection::East => (0.47, 0.),
-                                CardinalDirection::South => (0., 0.47),
-                                CardinalDirection::West => (-0.47, 0.),
-                            };
-                            let mut transform = Transform::from_xyz(
-                                player.grid_pos_x as f32 + x_offset,
+                            place_horizontal_ladder(
+                                commands,
+                                model_assets.ladder.clone(),
+                                player_direction,
+                                player.grid_pos_x as f32,
+                                player.grid_pos_y as f32,
                                 player_height as f32,
-                                player.grid_pos_y as f32 + y_offset,
-                            )
-                            .looking_to(player_direction.reverse().into(), Vec3::Y);
-                            transform.rotate_local_x(1.571);
-                            let entity = commands
-                                .spawn(SceneBundle {
-                                    scene: model_assets.ladder.clone(),
-                                    transform,
-                                    ..Default::default()
-                                })
-                                .insert(Ladder)
-                                .insert(Name::new("Horizontal Ladder"))
-                                .with_children(|parent| {
-                                    parent.spawn(SceneBundle {
-                                        scene: model_assets.ladder.clone(),
-                                        transform: Transform::from_xyz(0., 1., 0.),
-                                        ..Default::default()
-                                    });
-                                })
-                                .id();
-                            v.insert(entity);
+                                v,
+                            );
+                            player_history
+                                .0
+                                .push(PlayerHistoryEvent::PlaceHorizontalLadder(key));
                         }
                     }
                 }

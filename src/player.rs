@@ -1,9 +1,18 @@
+use std::collections::hash_map::Entry;
+
 use bevy::prelude::*;
 
 use crate::{
-    equipment::{ladder::HorizontalLadderKey, Inventory},
+    equipment::{
+        ladder::{
+            place_horizontal_ladder, place_vertical_ladder, HorizontalLadderKey, VerticalLadderKey,
+        },
+        rope::RopeKey,
+        Inventory,
+    },
     map::Map,
     states::{level::LevelManager, loading::ModelAssets, GameState},
+    ui::equipment::{InfoUiRoot, PickingUiRoot},
     util::{Alignment, CardinalDirection},
 };
 
@@ -12,6 +21,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Player>()
+            .register_type::<PlayerHistory>()
             .insert_resource(PlayerHistory::default())
             .add_systems(OnEnter(GameState::Level), spawn_player)
             .add_systems(
@@ -110,7 +120,7 @@ impl Player {
         }
     }
 
-    pub fn go(&self, direction: CardinalDirection, map: &Map, weight: u8) -> Option<Self> {
+    pub fn go(&self, direction: CardinalDirection, map: &Map) -> Option<Self> {
         let heights = &map.grid_heights;
         let x = self.grid_pos_x as usize;
         let y = self.grid_pos_y as usize;
@@ -240,7 +250,7 @@ impl Player {
                     ) {
                         1
                     } else {
-                        CLIMB_UP_STAMINA + weight as u16
+                        CLIMB_UP_STAMINA
                     };
                     if heights[next_y][next_x] == climb_state.elevation {
                         // climb on top
@@ -518,62 +528,163 @@ fn update_player_position(
     }
 }
 
+#[derive(Debug, Reflect)]
+pub enum PlayerHistoryEvent {
+    PlayerMove(Player),
+    PlaceVerticalLadder(VerticalLadderKey),
+    PlaceHorizontalLadder(HorizontalLadderKey),
+    PlaceRope(RopeKey),
+    PickUpVerticalLadder(VerticalLadderKey),
+    PickUpHorizontalLadder(HorizontalLadderKey),
+}
+
 #[derive(Debug, Default, Resource, Reflect)]
-pub struct PlayerHistory(Vec<Player>);
+#[reflect(Resource)]
+pub struct PlayerHistory(pub Vec<PlayerHistoryEvent>);
 
 fn player_input(
+    mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Player>,
+    mut player: Query<&mut Player>,
     mut player_history: ResMut<PlayerHistory>,
-    inventory: Res<Inventory>,
-    level_manager: Res<LevelManager>,
+    mut level_manager: ResMut<LevelManager>,
+    mut picking_ui: Query<&mut Visibility, With<PickingUiRoot>>,
+    mut info_ui: Query<&mut Visibility, (With<InfoUiRoot>, Without<PickingUiRoot>)>,
+    mut inventory: ResMut<Inventory>,
+    model_assets: Res<ModelAssets>,
 ) {
-    let map = &level_manager.get_current_level().map;
+    let mut direction = None;
     if keyboard_input.any_just_pressed([KeyCode::W, KeyCode::Up]) {
-        let mut player = query
-            .get_single_mut()
-            .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::North, map, inventory.weight());
-        if let Some(new_player) = new_player {
-            player_history.0.push(player.clone());
-            *player = new_player;
-        }
+        direction = Some(CardinalDirection::North);
     } else if keyboard_input.any_just_pressed([KeyCode::D, KeyCode::Right]) {
-        let mut player = query
-            .get_single_mut()
-            .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::East, map, inventory.weight());
-        if let Some(new_player) = new_player {
-            player_history.0.push(player.clone());
-            *player = new_player;
-        }
+        direction = Some(CardinalDirection::East);
     } else if keyboard_input.any_just_pressed([KeyCode::S, KeyCode::Down]) {
-        let mut player = query
-            .get_single_mut()
-            .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::South, map, inventory.weight());
-        if let Some(new_player) = new_player {
-            player_history.0.push(player.clone());
-            *player = new_player;
-        }
+        direction = Some(CardinalDirection::South);
     } else if keyboard_input.any_just_pressed([KeyCode::A, KeyCode::Left]) {
-        let mut player = query
-            .get_single_mut()
-            .expect("There should only be one player");
-        let new_player = player.go(CardinalDirection::West, map, inventory.weight());
-        if let Some(new_player) = new_player {
-            player_history.0.push(player.clone());
-            *player = new_player;
-        }
+        direction = Some(CardinalDirection::West);
     } else if keyboard_input.just_pressed(KeyCode::Z)
         && keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight])
     {
         // undo the last move
-        if let Some(old_player) = player_history.0.pop() {
-            let mut player = query
-                .get_single_mut()
-                .expect("There should only be one player");
-            *player = old_player;
+        if let Some(event) = player_history.0.pop() {
+            match event {
+                PlayerHistoryEvent::PlayerMove(old_player) => {
+                    let mut player = player
+                        .get_single_mut()
+                        .expect("There should only be one player");
+                    *player = old_player;
+                }
+                PlayerHistoryEvent::PlaceVerticalLadder(key) => {
+                    if let Some(entity) = level_manager
+                        .get_current_map_mut()
+                        .vertical_ladders
+                        .remove(&key)
+                    {
+                        commands.entity(entity).despawn_recursive();
+                        inventory.ladder_count += 1;
+                    } else {
+                        warn!("Tried to undo vertical ladder placement, but it didn't exist!");
+                    }
+                }
+                PlayerHistoryEvent::PlaceHorizontalLadder(key) => {
+                    if let Some(entity) = level_manager
+                        .get_current_map_mut()
+                        .horizontal_ladders
+                        .remove(&key)
+                    {
+                        commands.entity(entity).despawn_recursive();
+                        inventory.ladder_count += 1;
+                    } else {
+                        warn!("Tried to undo horizontal ladder placement, but it didn't exist!");
+                    }
+                }
+                PlayerHistoryEvent::PlaceRope(key) => {
+                    if let Some(entity) = level_manager.get_current_map_mut().ropes.remove(&key) {
+                        commands.entity(entity).despawn_recursive();
+                        inventory.rope_count += 1;
+                    } else {
+                        warn!("Tried to undo rope placement, but it didn't exist!");
+                    }
+                }
+                PlayerHistoryEvent::PickUpVerticalLadder(key) => {
+                    match level_manager
+                        .get_current_map_mut()
+                        .vertical_ladders
+                        .entry(key)
+                    {
+                        Entry::Occupied(_) => {
+                            warn!("Tried to undo ladder pickup, but a ladder was already there!")
+                        }
+                        Entry::Vacant(v) => {
+                            let key = v.key();
+                            let player = player
+                                .get_single()
+                                .expect("There should only be one player");
+                            place_vertical_ladder(
+                                commands,
+                                model_assets.ladder.clone(),
+                                key.direction,
+                                player.grid_pos_x as f32,
+                                player.grid_pos_y as f32,
+                                key.height as f32,
+                                v,
+                            );
+                            inventory.ladder_count -= 1;
+                        }
+                    }
+                }
+                PlayerHistoryEvent::PickUpHorizontalLadder(key) => {
+                    match level_manager
+                        .get_current_map_mut()
+                        .horizontal_ladders
+                        .entry(key)
+                    {
+                        Entry::Occupied(_) => {
+                            warn!("Tried to undo ladder pickup, but a ladder was already there!")
+                        }
+                        Entry::Vacant(v) => {
+                            let key = v.key();
+                            let player = player
+                                .get_single()
+                                .expect("There should only be one player");
+                            let direction = match key.alignment {
+                                Alignment::Xaxis => CardinalDirection::East,
+                                Alignment::Yaxis => CardinalDirection::North,
+                            };
+                            place_horizontal_ladder(
+                                commands,
+                                model_assets.ladder.clone(),
+                                direction,
+                                player.grid_pos_x as f32,
+                                player.grid_pos_y as f32,
+                                key.height as f32,
+                                v,
+                            );
+                            inventory.ladder_count -= 1;
+                        }
+                    }
+                }
+            }
+        } else {
+            // swap UI
+            *picking_ui.get_single_mut().unwrap() = Visibility::Visible;
+            *info_ui.get_single_mut().unwrap() = Visibility::Hidden;
+        }
+    }
+
+    if let Some(direction) = direction {
+        let mut player = player
+            .get_single_mut()
+            .expect("There should only be one player");
+        let new_player = player.go(direction, &level_manager.get_current_level().map);
+        if let Some(new_player) = new_player {
+            player_history
+                .0
+                .push(PlayerHistoryEvent::PlayerMove(player.clone()));
+            *player = new_player;
+            // swap UI
+            *picking_ui.get_single_mut().unwrap() = Visibility::Hidden;
+            *info_ui.get_single_mut().unwrap() = Visibility::Visible;
         }
     }
 }

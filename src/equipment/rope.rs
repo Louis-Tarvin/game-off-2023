@@ -3,14 +3,14 @@ use std::collections::hash_map::Entry;
 use bevy::prelude::*;
 
 use crate::{
-    player::{Player, PlayerState},
+    player::{Player, PlayerHistory, PlayerHistoryEvent, PlayerState},
     states::{level::LevelManager, loading::ModelAssets},
     util::CardinalDirection,
 };
 
 use super::Inventory;
 
-#[derive(Debug, PartialEq, Eq, Hash, Reflect)]
+#[derive(Debug, PartialEq, Eq, Hash, Reflect, Clone)]
 pub struct RopeKey {
     pub x: u8,
     pub y: u8,
@@ -24,6 +24,7 @@ pub fn handle_rope_input(
     mut level_manager: ResMut<LevelManager>,
     mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
+    mut player_history: ResMut<PlayerHistory>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Key2) {
         let map = level_manager.get_current_map_mut();
@@ -54,11 +55,12 @@ pub fn handle_rope_input(
             let height_diff = player_height as i16
                 - map.grid_heights[grid_facing_y as usize][grid_facing_x as usize] as i16;
             if height_diff > 0 {
-                match map.ropes.entry(RopeKey {
+                let key = RopeKey {
                     x: player.grid_pos_x,
                     y: player.grid_pos_y,
                     direction,
-                }) {
+                };
+                match map.ropes.entry(key.clone()) {
                     Entry::Occupied(_) => {}
                     Entry::Vacant(v) => {
                         // Place rope if in inventory
@@ -87,6 +89,7 @@ pub fn handle_rope_input(
                                 })
                                 .id();
                             v.insert(entity);
+                            player_history.0.push(PlayerHistoryEvent::PlaceRope(key));
                         }
                     }
                 }

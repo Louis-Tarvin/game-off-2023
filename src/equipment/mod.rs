@@ -29,9 +29,5 @@ impl Plugin for EquipmentPlugin {
 pub struct Inventory {
     pub ladder_count: u8,
     pub rope_count: u8,
-}
-impl Inventory {
-    pub fn weight(&self) -> u8 {
-        self.ladder_count + self.rope_count
-    }
+    pub weight: u8,
 }

@@ -6,8 +6,8 @@ use crate::{
     map::{create_map_on_level_load, Map},
     ui::{
         equipment::{
-            draw_equimpment_cards, handle_add_buttons, handle_subtract_buttons,
-            update_inventory_counters,
+            draw_equimpment_cards, draw_inventory_icons, handle_add_buttons,
+            handle_subtract_buttons, update_inventory_counters,
         },
         stamina::{setup_stamina_ui, update_stamina_ui},
     },
@@ -26,6 +26,7 @@ impl Plugin for LevelPlugin {
                 setup_scene,
                 setup_stamina_ui,
                 draw_equimpment_cards,
+                draw_inventory_icons,
             ),
         )
         .add_systems(
@@ -49,6 +50,7 @@ impl Plugin for LevelPlugin {
 pub struct Level {
     pub map: Map,
     pub stamina_budget: u16,
+    pub weight_budget: u8,
 }
 
 #[derive(Debug, Resource)]
@@ -81,6 +83,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (2, 0),
                 ),
                 stamina_budget: 17,
+                weight_budget: 3,
             },
             Level {
                 map: Map::new(
@@ -93,6 +96,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (5, 0),
                 ),
                 stamina_budget: 30,
+                weight_budget: 5,
             },
         ],
     })

@@ -10,12 +10,14 @@ use bevy_kira_audio::AudioPlugin;
 use clouds::CloudMaterial;
 use equipment::EquipmentPlugin;
 use player::PlayerPlugin;
+use post_process::PostProcessPlugin;
 use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
 
 mod clouds;
 mod equipment;
 mod map;
 mod player;
+mod post_process;
 mod states;
 mod ui;
 mod util;
@@ -32,6 +34,7 @@ fn main() {
             LevelPlugin,
             PlayerPlugin,
             EquipmentPlugin,
+            PostProcessPlugin,
         ))
         .add_state::<states::GameState>()
         .insert_resource(ClearColor(Color::rgb(0.447, 0.867, 0.969)))

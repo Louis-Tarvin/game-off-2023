@@ -11,7 +11,12 @@ use crate::{
         Inventory,
     },
     map::Map,
-    states::{level::LevelManager, loading::ModelAssets, GameState},
+    states::{
+        level::{DespawnOnTransition, LevelManager},
+        loading::ModelAssets,
+        transition::TransitionManager,
+        GameState,
+    },
     ui::equipment::{InfoUiRoot, PickingUiRoot},
     util::{Alignment, CardinalDirection},
 };
@@ -26,7 +31,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnEnter(GameState::Level), spawn_player)
             .add_systems(
                 Update,
-                (player_input, update_player_position)
+                (player_input, update_player_position, check_if_at_flag)
                     .chain()
                     .run_if(in_state(GameState::Level)),
             );
@@ -484,7 +489,8 @@ fn spawn_player(
                 as f32,
             map.player_start_pos.1 as f32,
         ))
-        .insert(Name::new("Climber"));
+        .insert(Name::new("Climber"))
+        .insert(DespawnOnTransition);
 }
 
 fn update_player_position(
@@ -686,5 +692,24 @@ fn player_input(
             *picking_ui.get_single_mut().unwrap() = Visibility::Hidden;
             *info_ui.get_single_mut().unwrap() = Visibility::Visible;
         }
+    }
+}
+
+fn check_if_at_flag(
+    player: Query<&Player>,
+    level_manager: Res<LevelManager>,
+    mut transition_manager: ResMut<TransitionManager>,
+) {
+    let player = player
+        .get_single()
+        .expect("There should only be one player");
+
+    let map = &level_manager.get_current_level().map;
+    if matches!(*transition_manager, TransitionManager::Normal)
+        && player.grid_pos_x == map.flag_pos.0
+        && player.grid_pos_y == map.flag_pos.1
+    {
+        info!("At flag");
+        *transition_manager = TransitionManager::TransitioningOut(0.0);
     }
 }

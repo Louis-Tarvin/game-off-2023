@@ -1,6 +1,13 @@
 use bevy::prelude::*;
 
-use super::{level::init_level_manager, loading::FontAssets, GameState};
+use crate::post_process::TransitionSettings;
+
+use super::{
+    level::init_level_manager,
+    loading::FontAssets,
+    transition::{update_transition_manager, TransitionManager},
+    GameState,
+};
 
 pub struct MenuPlugin;
 
@@ -17,7 +24,12 @@ impl Plugin for MenuPlugin {
                 Update,
                 click_play_button.run_if(in_state(GameState::MainMenu)),
             )
-            .add_systems(OnExit(GameState::MainMenu), cleanup_menu);
+            .add_systems(OnExit(GameState::MainMenu), cleanup_menu)
+            .add_systems(
+                Update,
+                update_transition_manager
+                    .run_if(in_state(GameState::MainMenu).or_else(in_state(GameState::Level))),
+            );
     }
 }
 
@@ -36,8 +48,8 @@ impl Default for ButtonColors {
     }
 }
 
-#[derive(Default, Component)]
-struct UiCamera;
+#[derive(Component)]
+pub struct MainCamera;
 
 fn setup_menu(
     mut commands: Commands,
@@ -45,7 +57,10 @@ fn setup_menu(
     button_colors: Res<ButtonColors>,
 ) {
     println!("Setting up menu...");
-    commands.spawn(Camera2dBundle::default()).insert(UiCamera);
+    commands
+        .spawn(Camera3dBundle::default())
+        .insert(MainCamera)
+        .insert(TransitionSettings { progress: 0.0 });
     commands
         .spawn(ButtonBundle {
             style: Style {
@@ -73,16 +88,16 @@ fn setup_menu(
 
 fn click_play_button(
     button_colors: Res<ButtonColors>,
-    mut state: ResMut<NextState<GameState>>,
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
+    mut transition_manager: ResMut<TransitionManager>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
-                state.set(GameState::Level);
+                *transition_manager = TransitionManager::TransitioningOutMenu(0.0);
             }
             Interaction::Hovered => {
                 *color = button_colors.hovered.into();
@@ -94,11 +109,6 @@ fn click_play_button(
     }
 }
 
-fn cleanup_menu(
-    mut commands: Commands,
-    button: Query<Entity, With<Button>>,
-    camera: Query<Entity, With<UiCamera>>,
-) {
+fn cleanup_menu(mut commands: Commands, button: Query<Entity, With<Button>>) {
     commands.entity(button.single()).despawn_recursive();
-    commands.entity(camera.single()).despawn_recursive();
 }

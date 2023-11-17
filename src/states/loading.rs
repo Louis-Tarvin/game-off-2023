@@ -2,6 +2,8 @@ use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
 use bevy_kira_audio::AudioSource;
 
+use crate::states::transition::TransitionManager;
+
 use super::GameState;
 
 pub struct LoadingPlugin;
@@ -15,7 +17,8 @@ impl Plugin for LoadingPlugin {
         .add_collection_to_loading_state::<_, FontAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, AudioAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, TextureAssets>(GameState::Loading)
-        .add_collection_to_loading_state::<_, ModelAssets>(GameState::Loading);
+        .add_collection_to_loading_state::<_, ModelAssets>(GameState::Loading)
+        .insert_resource(TransitionManager::Normal);
     }
 }
 

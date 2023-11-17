@@ -13,47 +13,50 @@ use crate::{
     },
 };
 
-use super::{loading::ModelAssets, GameState};
+use super::{loading::ModelAssets, menu::MainCamera, GameState};
 
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            OnEnter(GameState::Level),
-            (
-                create_map_on_level_load,
-                setup_scene,
-                setup_stamina_ui,
-                draw_equimpment_cards,
-                draw_inventory_icons,
-            ),
-        )
-        .add_systems(
-            Update,
-            (
-                animate_flag,
-                update_stamina_ui,
-                handle_add_buttons,
-                handle_subtract_buttons,
+        app.register_type::<LevelManager>()
+            .add_systems(
+                OnEnter(GameState::Level),
+                (
+                    create_map_on_level_load,
+                    setup_scene,
+                    setup_stamina_ui,
+                    draw_equimpment_cards,
+                    draw_inventory_icons,
+                ),
             )
-                .run_if(in_state(GameState::Level)),
-        )
-        .add_systems(
-            Update,
-            update_inventory_counters.run_if(resource_changed::<Inventory>()),
-        );
+            .add_systems(
+                Update,
+                (
+                    animate_flag,
+                    update_stamina_ui,
+                    handle_add_buttons,
+                    handle_subtract_buttons,
+                )
+                    .run_if(in_state(GameState::Level)),
+            )
+            .add_systems(
+                Update,
+                update_inventory_counters.run_if(resource_changed::<Inventory>()),
+            )
+            .add_systems(OnEnter(GameState::LevelTransition), level_transition);
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Reflect)]
 pub struct Level {
     pub map: Map,
     pub stamina_budget: u16,
     pub weight_budget: u8,
 }
 
-#[derive(Debug, Resource)]
+#[derive(Debug, Default, Resource, Reflect)]
+#[reflect(Resource)]
 pub struct LevelManager {
     pub levels: Vec<Level>,
     pub current: usize,
@@ -71,6 +74,15 @@ pub fn init_level_manager(mut commands: Commands) {
     commands.insert_resource(LevelManager {
         current: 0,
         levels: vec![
+            Level {
+                map: Map::new(
+                    vec![vec![7, 6, 4, 7], vec![3, 2, 2, 3], vec![1, 1, 1, 2]],
+                    (0, 2),
+                    (2, 1),
+                ),
+                stamina_budget: 7,
+                weight_budget: 0,
+            },
             Level {
                 map: Map::new(
                     vec![
@@ -102,53 +114,61 @@ pub fn init_level_manager(mut commands: Commands) {
     })
 }
 
+#[derive(Component)]
+pub struct DespawnOnTransition;
+
 fn setup_scene(
     mut commands: Commands,
     mut cloud_materials: ResMut<Assets<CloudMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut cameras: Query<(&mut Transform, &mut Projection), With<MainCamera>>,
     model_assets: Res<ModelAssets>,
     level_manager: Res<LevelManager>,
 ) {
     // Spawn orthographic camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(1.5, 7., 10.0).looking_at(Vec3::new(2.5, 2.0, 0.0), Vec3::Y),
-        projection: Projection::Orthographic(OrthographicProjection {
+    if let Ok((mut camera_transform, mut camera_projection)) = cameras.get_single_mut() {
+        *camera_transform =
+            Transform::from_xyz(1.5, 7., 10.0).looking_at(Vec3::new(2.5, 2.0, 0.0), Vec3::Y);
+        *camera_projection = Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical(12.),
             ..Default::default()
-        }),
-        ..Default::default()
-    });
-    // .insert(ScreenSpaceAmbientOcclusionBundle::default());
+        });
+    }
 
     // Spawn main light source
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            shadows_enabled: true,
+    commands
+        .spawn(DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                shadows_enabled: true,
+                ..Default::default()
+            },
+            transform: Transform::from_xyz(10.0, 20.0, 5.0).looking_at(Vec3::default(), Vec3::Y),
             ..Default::default()
-        },
-        transform: Transform::from_xyz(10.0, 20.0, 5.0).looking_at(Vec3::default(), Vec3::Y),
-        ..Default::default()
-    });
+        })
+        .insert(DespawnOnTransition);
 
     // Spawn lower clouds
-    commands.spawn(MaterialMeshBundle {
-        material: cloud_materials.add(CloudMaterial {
-            scale: 2.0,
-            color_a: Color::rgb(0.7, 0.7, 0.7),
-            color_b: Color::WHITE,
-            height_scale: 1.0,
-            time_scale: 0.2,
-        }),
-        mesh: meshes.add(
-            shape::Plane {
-                size: 20.0,
-                subdivisions: 16,
-            }
-            .into(),
-        ),
-        transform: Transform::from_xyz(2.5, 0., 3.0),
-        ..Default::default()
-    });
+    commands
+        .spawn(MaterialMeshBundle {
+            material: cloud_materials.add(CloudMaterial {
+                scale: 2.0,
+                color_a: Color::rgb(0.7, 0.7, 0.7),
+                color_b: Color::WHITE,
+                height_scale: 1.0,
+                time_scale: 0.2,
+            }),
+            mesh: meshes.add(
+                shape::Plane {
+                    size: 20.0,
+                    subdivisions: 16,
+                }
+                .into(),
+            ),
+            transform: Transform::from_xyz(2.5, 0., 3.0),
+            ..Default::default()
+        })
+        .insert(Name::new("Clouds"))
+        .insert(DespawnOnTransition);
 
     // Spawn flagpole
     let map = &level_manager.get_current_level().map;
@@ -162,7 +182,8 @@ fn setup_scene(
             map.grid_heights[map.flag_pos.1 as usize][map.flag_pos.0 as usize] as f32,
             map.flag_pos.1 as f32,
         ))
-        .insert(Name::new("Flag"));
+        .insert(Name::new("Flag"))
+        .insert(DespawnOnTransition);
 }
 
 fn animate_flag(
@@ -174,4 +195,15 @@ fn animate_flag(
             .play(model_assets.flag_animation.clone_weak())
             .repeat();
     }
+}
+
+fn level_transition(
+    mut commands: Commands,
+    mut state: ResMut<NextState<GameState>>,
+    entities: Query<Entity, With<DespawnOnTransition>>,
+) {
+    for entity in entities.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+    state.set(GameState::Level);
 }

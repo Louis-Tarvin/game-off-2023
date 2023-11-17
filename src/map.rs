@@ -7,7 +7,7 @@ use crate::{
         ladder::{HorizontalLadderKey, VerticalLadderKey},
         rope::RopeKey,
     },
-    states::level::LevelManager,
+    states::level::{DespawnOnTransition, LevelManager},
     util::CardinalDirection,
 };
 
@@ -85,22 +85,25 @@ pub fn create_map_on_level_load(
     let map = &level_manager.get_current_level().map;
     for y in 0..map.grid_heights.len() {
         for x in 0..map.grid_heights[0].len() {
-            commands.spawn(MaterialMeshBundle {
-                material: materials.add(StandardMaterial {
-                    base_color: Color::rgb(0.353, 0.376, 0.529),
-                    metallic: 0.,
-                    reflectance: 0.,
-                    perceptual_roughness: 1.0,
+            commands
+                .spawn(MaterialMeshBundle {
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::rgb(0.353, 0.376, 0.529),
+                        metallic: 0.,
+                        reflectance: 0.,
+                        perceptual_roughness: 1.0,
+                        ..Default::default()
+                    }),
+                    mesh: meshes
+                        .add(shape::Box::new(1.0, map.grid_heights[y][x] as f32, 1.0).into()),
+                    transform: Transform::from_xyz(
+                        x as f32,
+                        map.grid_heights[y][x] as f32 / 2.0,
+                        y as f32,
+                    ),
                     ..Default::default()
-                }),
-                mesh: meshes.add(shape::Box::new(1.0, map.grid_heights[y][x] as f32, 1.0).into()),
-                transform: Transform::from_xyz(
-                    x as f32,
-                    map.grid_heights[y][x] as f32 / 2.0,
-                    y as f32,
-                ),
-                ..Default::default()
-            });
+                })
+                .insert(DespawnOnTransition);
         }
     }
 }

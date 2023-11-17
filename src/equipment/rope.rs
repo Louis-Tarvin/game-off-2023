@@ -4,7 +4,10 @@ use bevy::prelude::*;
 
 use crate::{
     player::{Player, PlayerHistory, PlayerHistoryEvent, PlayerState},
-    states::{level::LevelManager, loading::ModelAssets},
+    states::{
+        level::{DespawnOnTransition, LevelManager},
+        loading::ModelAssets,
+    },
     util::CardinalDirection,
 };
 
@@ -78,6 +81,7 @@ pub fn handle_rope_input(
                                     ..Default::default()
                                 })
                                 .insert(Name::new("Rope"))
+                                .insert(DespawnOnTransition)
                                 .with_children(|parent| {
                                     for i in 0..height_diff {
                                         parent.spawn(SceneBundle {

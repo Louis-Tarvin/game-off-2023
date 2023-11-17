@@ -2,10 +2,16 @@ use bevy::prelude::*;
 
 use crate::{
     equipment::Inventory,
-    states::{level::LevelManager, loading::FontAssets},
+    states::{
+        level::{DespawnOnTransition, LevelManager},
+        loading::FontAssets,
+    },
 };
 
-use super::constants::{DARK_GREY, GREY, UI_YELLOW, UI_YELLOW_HOVER};
+use super::{
+    constants::{DARK_GREY, GREY, UI_YELLOW, UI_YELLOW_HOVER},
+    UiRoot,
+};
 
 #[derive(Debug, Component)]
 pub struct InventoryCounter(Equipment);
@@ -203,6 +209,8 @@ pub fn draw_equimpment_cards(mut commands: Commands, font_assets: Res<FontAssets
             },
             ..Default::default()
         }).insert(PickingUiRoot)
+        .insert(UiRoot)
+        .insert(DespawnOnTransition)
         .with_children(|parent| {
             draw_equimpment_card(
                 parent,
@@ -404,6 +412,8 @@ pub fn draw_inventory_icons(mut commands: Commands, font_assets: Res<FontAssets>
             ..Default::default()
         })
         .insert(InfoUiRoot)
+        .insert(UiRoot)
+        .insert(DespawnOnTransition)
         .with_children(|parent| {
             draw_inventory_icon(
                 parent,

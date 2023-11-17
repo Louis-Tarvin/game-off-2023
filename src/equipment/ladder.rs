@@ -5,7 +5,10 @@ use bevy::prelude::*;
 use crate::{
     map::Map,
     player::{Player, PlayerHistory, PlayerHistoryEvent},
-    states::{level::LevelManager, loading::ModelAssets},
+    states::{
+        level::{DespawnOnTransition, LevelManager},
+        loading::ModelAssets,
+    },
     util::{Alignment, CardinalDirection},
 };
 
@@ -97,6 +100,7 @@ pub fn place_vertical_ladder(
         })
         .insert(Ladder)
         .insert(Name::new("Vertical Ladder"))
+        .insert(DespawnOnTransition)
         .with_children(|parent| {
             parent.spawn(SceneBundle {
                 scene: ladder_scn,
@@ -134,6 +138,7 @@ pub fn place_horizontal_ladder(
         })
         .insert(Ladder)
         .insert(Name::new("Horizontal Ladder"))
+        .insert(DespawnOnTransition)
         .with_children(|parent| {
             parent.spawn(SceneBundle {
                 scene: ladder_scn,

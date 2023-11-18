@@ -14,6 +14,7 @@ use crate::{
 #[derive(Debug, Resource, Reflect)]
 pub struct Map {
     pub grid_heights: Vec<Vec<u8>>,
+    pub grid_climbable: Vec<Vec<bool>>,
     pub player_start_pos: (u8, u8),
     pub flag_pos: (u8, u8),
     pub scale_pos: Option<(u8, u8)>,
@@ -24,12 +25,14 @@ pub struct Map {
 impl Map {
     pub fn new(
         grid_heights: Vec<Vec<u8>>,
+        grid_climbable: Vec<Vec<bool>>,
         player_pos: (u8, u8),
         flag_pos: (u8, u8),
         scale_pos: Option<(u8, u8)>,
     ) -> Self {
         Self {
             grid_heights,
+            grid_climbable,
             player_start_pos: player_pos,
             flag_pos,
             scale_pos,
@@ -105,10 +108,15 @@ pub fn create_map_on_level_load(
     let map = &level_manager.get_current_level().map;
     for y in 0..map.grid_heights.len() {
         for x in 0..map.grid_heights[0].len() {
+            let colour = if map.grid_climbable[y][x] {
+                Color::rgb(0.353, 0.376, 0.529)
+            } else {
+                Color::rgb(0.192, 0.204, 0.286)
+            };
             commands
                 .spawn(MaterialMeshBundle {
                     material: materials.add(StandardMaterial {
-                        base_color: Color::rgb(0.353, 0.376, 0.529),
+                        base_color: colour,
                         metallic: 0.,
                         reflectance: 0.,
                         perceptual_roughness: 1.0,

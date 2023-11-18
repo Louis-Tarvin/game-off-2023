@@ -14,6 +14,7 @@ use crate::{
         },
         stamina::{setup_stamina_ui, update_stamina_ui},
     },
+    util::CardinalDirection,
 };
 
 use super::{loading::ModelAssets, transition::TransitionManager, GameState};
@@ -96,14 +97,21 @@ pub fn init_level_manager(mut commands: Commands) {
                         vec![5, 6, 7, 6],
                         vec![4, 4, 3, 5],
                         vec![4, 3, 3, 4],
-                        vec![3, 2, 2, 3],
+                        vec![4, 2, 2, 3],
                         vec![1, 1, 1, 2],
+                    ],
+                    vec![
+                        vec![false, false, false, false],
+                        vec![false, false, false, false],
+                        vec![false, true, false, false],
+                        vec![false, false, true, false],
+                        vec![true, true, true, false],
                     ],
                     (0, 4),
                     (2, 1),
                     None,
                 ),
-                stamina_budget: 11,
+                stamina_budget: 13,
                 weight_budget: 0,
                 ladder_unlocked: false,
                 rope_unlocked: false,
@@ -111,9 +119,14 @@ pub fn init_level_manager(mut commands: Commands) {
             Level {
                 map: Map::new(
                     vec![
-                        vec![4, 6, 4, 5, 6, 4],
+                        vec![4, 6, 4, 6, 6, 4],
                         vec![4, 6, 2, 6, 5, 5],
                         vec![3, 3, 1, 3, 3, 2],
+                    ],
+                    vec![
+                        vec![false, false, false, false, false, false],
+                        vec![false, false, false, false, false, false],
+                        vec![false, false, false, false, false, false],
                     ],
                     (0, 2),
                     (5, 1),
@@ -127,10 +140,37 @@ pub fn init_level_manager(mut commands: Commands) {
             Level {
                 map: Map::new(
                     vec![
+                        vec![6, 6, 6, 6, 5, 5],
+                        vec![4, 4, 3, 4, 3, 2],
+                        vec![2, 3, 2, 4, 2, 2],
+                    ],
+                    vec![
+                        vec![false, false, false, false, false, false],
+                        vec![false, false, false, false, false, false],
+                        vec![false, false, false, false, false, false],
+                    ],
+                    (0, 0),
+                    (5, 2),
+                    None,
+                ),
+                stamina_budget: 9,
+                weight_budget: 2,
+                ladder_unlocked: false,
+                rope_unlocked: true,
+            },
+            Level {
+                map: Map::new(
+                    vec![
                         vec![7, 7, 7, 6],
                         vec![6, 5, 5, 5],
                         vec![3, 3, 3, 3],
                         vec![2, 1, 1, 1],
+                    ],
+                    vec![
+                        vec![true, true, true, true],
+                        vec![true, true, true, true],
+                        vec![true, true, true, true],
+                        vec![true, true, true, true],
                     ],
                     (1, 3),
                     (2, 0),
@@ -147,6 +187,11 @@ pub fn init_level_manager(mut commands: Commands) {
                         vec![5, 6, 6, 5, 6, 4],
                         vec![2, 3, 3, 2, 3, 3],
                         vec![1, 3, 1, 2, 3, 1],
+                    ],
+                    vec![
+                        vec![true, true, true, true, true, true],
+                        vec![true, true, true, true, true, true],
+                        vec![true, true, true, true, true, true],
                     ],
                     (0, 2),
                     (5, 0),
@@ -284,9 +329,16 @@ fn reload_level(
     mut transition_manager: ResMut<TransitionManager>,
     keyboard_input: Res<Input<KeyCode>>,
     mut level_manager: ResMut<LevelManager>,
+    mut main_camera: Query<&mut MainCamera>,
 ) {
     if keyboard_input.just_pressed(KeyCode::R) {
+        // remove ladders/ropes etc.
         level_manager.get_current_map_mut().reset();
+        // reset camera rotation
+        for mut camera in main_camera.iter_mut() {
+            camera.direction = CardinalDirection::North;
+            camera.angle_change = 0.0;
+        }
         *transition_manager = TransitionManager::TransitioningOutReload(0.0);
     }
 }

@@ -16,16 +16,23 @@ pub struct Map {
     pub grid_heights: Vec<Vec<u8>>,
     pub player_start_pos: (u8, u8),
     pub flag_pos: (u8, u8),
+    pub scale_pos: Option<(u8, u8)>,
     pub vertical_ladders: HashMap<VerticalLadderKey, Entity>,
     pub horizontal_ladders: HashMap<HorizontalLadderKey, Entity>,
     pub ropes: HashMap<RopeKey, Entity>,
 }
 impl Map {
-    pub fn new(grid_heights: Vec<Vec<u8>>, player_pos: (u8, u8), flag_pos: (u8, u8)) -> Self {
+    pub fn new(
+        grid_heights: Vec<Vec<u8>>,
+        player_pos: (u8, u8),
+        flag_pos: (u8, u8),
+        scale_pos: Option<(u8, u8)>,
+    ) -> Self {
         Self {
             grid_heights,
             player_start_pos: player_pos,
             flag_pos,
+            scale_pos,
             vertical_ladders: HashMap::new(),
             horizontal_ladders: HashMap::new(),
             ropes: HashMap::new(),
@@ -73,6 +80,19 @@ impl Map {
             y: grid_facing_y,
             direction: direction.reverse(),
         })
+    }
+
+    pub fn reset(&mut self) {
+        self.vertical_ladders = HashMap::new();
+        self.horizontal_ladders = HashMap::new();
+        self.ropes = HashMap::new();
+    }
+
+    pub fn midpoint(&self) -> (f32, f32) {
+        (
+            self.grid_heights[0].len() as f32 / 2.0,
+            self.grid_heights.len() as f32 / 2.0,
+        )
     }
 }
 

@@ -195,7 +195,11 @@ fn draw_equimpment_card(parent: &mut ChildBuilder, font: Handle<Font>, equipment
         });
 }
 
-pub fn draw_equimpment_cards(mut commands: Commands, font_assets: Res<FontAssets>) {
+pub fn draw_equimpment_cards(
+    mut commands: Commands,
+    font_assets: Res<FontAssets>,
+    level_manager: Res<LevelManager>,
+) {
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -212,6 +216,8 @@ pub fn draw_equimpment_cards(mut commands: Commands, font_assets: Res<FontAssets
         .insert(UiRoot)
         .insert(DespawnOnTransition)
         .with_children(|parent| {
+            let level = level_manager.get_current_level();
+            if level.ladder_unlocked {
             draw_equimpment_card(
                 parent,
                 font_assets.fira_sans.clone(),
@@ -222,6 +228,8 @@ pub fn draw_equimpment_cards(mut commands: Commands, font_assets: Res<FontAssets
                     weight: 2,
                 },
             );
+            }
+            if level.rope_unlocked {
             draw_equimpment_card(
                 parent,
                 font_assets.fira_sans.clone(),
@@ -232,6 +240,7 @@ pub fn draw_equimpment_cards(mut commands: Commands, font_assets: Res<FontAssets
                     weight: 1,
                 },
             );
+            }
         });
 }
 
@@ -396,7 +405,11 @@ fn draw_inventory_icon(
         });
 }
 
-pub fn draw_inventory_icons(mut commands: Commands, font_assets: Res<FontAssets>) {
+pub fn draw_inventory_icons(
+    mut commands: Commands,
+    font_assets: Res<FontAssets>,
+    level_manager: Res<LevelManager>,
+) {
     commands
         .spawn(NodeBundle {
             style: Style {
@@ -415,12 +428,17 @@ pub fn draw_inventory_icons(mut commands: Commands, font_assets: Res<FontAssets>
         .insert(UiRoot)
         .insert(DespawnOnTransition)
         .with_children(|parent| {
-            draw_inventory_icon(
-                parent,
-                font_assets.fira_sans.clone(),
-                Equipment::Ladder,
-                '1',
-            );
-            draw_inventory_icon(parent, font_assets.fira_sans.clone(), Equipment::Rope, '2');
+            let level = level_manager.get_current_level();
+            if level.ladder_unlocked {
+                draw_inventory_icon(
+                    parent,
+                    font_assets.fira_sans.clone(),
+                    Equipment::Ladder,
+                    '1',
+                );
+            }
+            if level.rope_unlocked {
+                draw_inventory_icon(parent, font_assets.fira_sans.clone(), Equipment::Rope, '2');
+            }
         });
 }

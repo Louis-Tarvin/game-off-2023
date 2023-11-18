@@ -11,6 +11,7 @@ use crate::{
         Inventory,
     },
     map::Map,
+    scale::check_if_at_scale,
     states::{
         level::{DespawnOnTransition, LevelManager},
         loading::ModelAssets,
@@ -31,7 +32,12 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnEnter(GameState::Level), spawn_player)
             .add_systems(
                 Update,
-                (player_input, update_player_position, check_if_at_flag)
+                (
+                    player_input,
+                    update_player_position,
+                    check_if_at_flag,
+                    check_if_at_scale,
+                )
                     .chain()
                     .run_if(in_state(GameState::Level)),
             );
@@ -709,7 +715,10 @@ fn check_if_at_flag(
         && player.grid_pos_x == map.flag_pos.0
         && player.grid_pos_y == map.flag_pos.1
     {
-        info!("At flag");
         *transition_manager = TransitionManager::TransitioningOut(0.0);
     }
+}
+
+pub fn clear_player_history(mut player_history: ResMut<PlayerHistory>) {
+    player_history.0.clear();
 }

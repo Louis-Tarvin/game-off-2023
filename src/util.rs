@@ -45,3 +45,15 @@ impl From<CardinalDirection> for Alignment {
         }
     }
 }
+
+pub fn cubic_ease_in_out(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    let t = t * 2.0;
+
+    if t < 1.0 {
+        return 0.5 * t * t * t;
+    }
+
+    let t = t - 2.0;
+    0.5 * (t * t * t + 2.0)
+}

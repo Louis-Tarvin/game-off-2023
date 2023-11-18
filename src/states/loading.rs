@@ -10,7 +10,7 @@ pub struct LoadingPlugin;
 
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
-        println!("loading...");
+        info!("loading...");
         app.add_loading_state(
             LoadingState::new(GameState::Loading).continue_to_state(GameState::MainMenu),
         )
@@ -54,4 +54,6 @@ pub struct ModelAssets {
     pub rope_top: Handle<Scene>,
     #[asset(path = "models/rope.glb#Scene1")]
     pub rope: Handle<Scene>,
+    #[asset(path = "models/scale.glb#Scene0")]
+    pub scale: Handle<Scene>,
 }

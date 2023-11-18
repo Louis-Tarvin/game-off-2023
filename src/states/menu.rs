@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::post_process::TransitionSettings;
+use crate::{camera::MainCamera, post_process::TransitionSettings};
 
 use super::{
     level::init_level_manager,
@@ -48,18 +48,14 @@ impl Default for ButtonColors {
     }
 }
 
-#[derive(Component)]
-pub struct MainCamera;
-
 fn setup_menu(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
     button_colors: Res<ButtonColors>,
 ) {
-    println!("Setting up menu...");
     commands
         .spawn(Camera3dBundle::default())
-        .insert(MainCamera)
+        .insert(MainCamera::default())
         .insert(TransitionSettings { progress: 0.0 });
     commands
         .spawn(ButtonBundle {
@@ -97,7 +93,7 @@ fn click_play_button(
     for (interaction, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
-                *transition_manager = TransitionManager::TransitioningOutMenu(0.0);
+                *transition_manager = TransitionManager::TransitioningOutReload(0.0);
             }
             Interaction::Hovered => {
                 *color = button_colors.hovered.into();

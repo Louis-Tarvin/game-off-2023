@@ -1,9 +1,12 @@
 use bevy::{prelude::*, render::camera::ScalingMode};
 
 use crate::{
+    camera::{camera_rotation, MainCamera},
     clouds::CloudMaterial,
     equipment::Inventory,
     map::{create_map_on_level_load, Map},
+    player::clear_player_history,
+    scale::{scale_rotation, Scale},
     ui::{
         equipment::{
             draw_equimpment_cards, draw_inventory_icons, handle_add_buttons,
@@ -13,7 +16,7 @@ use crate::{
     },
 };
 
-use super::{loading::ModelAssets, menu::MainCamera, GameState};
+use super::{loading::ModelAssets, transition::TransitionManager, GameState};
 
 pub struct LevelPlugin;
 
@@ -37,6 +40,10 @@ impl Plugin for LevelPlugin {
                     update_stamina_ui,
                     handle_add_buttons,
                     handle_subtract_buttons,
+                    reload_level,
+                    skip_level,
+                    scale_rotation,
+                    camera_rotation,
                 )
                     .run_if(in_state(GameState::Level)),
             )
@@ -44,7 +51,14 @@ impl Plugin for LevelPlugin {
                 Update,
                 update_inventory_counters.run_if(resource_changed::<Inventory>()),
             )
-            .add_systems(OnEnter(GameState::LevelTransition), level_transition);
+            .add_systems(
+                OnEnter(GameState::LevelTransition),
+                (level_transition, clear_player_history),
+            )
+            .add_systems(
+                OnEnter(GameState::LevelReload),
+                (level_transition, clear_player_history),
+            );
     }
 }
 
@@ -53,6 +67,8 @@ pub struct Level {
     pub map: Map,
     pub stamina_budget: u16,
     pub weight_budget: u8,
+    pub ladder_unlocked: bool,
+    pub rope_unlocked: bool,
 }
 
 #[derive(Debug, Default, Resource, Reflect)]
@@ -76,26 +92,54 @@ pub fn init_level_manager(mut commands: Commands) {
         levels: vec![
             Level {
                 map: Map::new(
-                    vec![vec![7, 6, 4, 7], vec![3, 2, 2, 3], vec![1, 1, 1, 2]],
-                    (0, 2),
+                    vec![
+                        vec![5, 6, 7, 6],
+                        vec![4, 4, 3, 5],
+                        vec![4, 3, 3, 4],
+                        vec![3, 2, 2, 3],
+                        vec![1, 1, 1, 2],
+                    ],
+                    (0, 4),
                     (2, 1),
+                    None,
                 ),
-                stamina_budget: 7,
+                stamina_budget: 11,
                 weight_budget: 0,
+                ladder_unlocked: false,
+                rope_unlocked: false,
             },
             Level {
                 map: Map::new(
                     vec![
-                        vec![8, 7, 7, 6],
+                        vec![4, 6, 4, 5, 6, 4],
+                        vec![4, 6, 2, 6, 5, 5],
+                        vec![3, 3, 1, 3, 3, 2],
+                    ],
+                    (0, 2),
+                    (5, 1),
+                    None,
+                ),
+                stamina_budget: 8,
+                weight_budget: 4,
+                ladder_unlocked: true,
+                rope_unlocked: false,
+            },
+            Level {
+                map: Map::new(
+                    vec![
+                        vec![7, 7, 7, 6],
                         vec![6, 5, 5, 5],
                         vec![3, 3, 3, 3],
                         vec![2, 1, 1, 1],
                     ],
                     (1, 3),
                     (2, 0),
+                    Some((0, 0)),
                 ),
-                stamina_budget: 17,
+                stamina_budget: 19,
                 weight_budget: 3,
+                ladder_unlocked: true,
+                rope_unlocked: true,
             },
             Level {
                 map: Map::new(
@@ -106,9 +150,12 @@ pub fn init_level_manager(mut commands: Commands) {
                     ],
                     (0, 2),
                     (5, 0),
+                    None,
                 ),
                 stamina_budget: 30,
                 weight_budget: 5,
+                ladder_unlocked: true,
+                rope_unlocked: true,
             },
         ],
     })
@@ -184,6 +231,22 @@ fn setup_scene(
         ))
         .insert(Name::new("Flag"))
         .insert(DespawnOnTransition);
+
+    // Spawn scale
+    if let Some((scale_x, scale_y)) = map.scale_pos {
+        let height = map.grid_heights[scale_y as usize][scale_x as usize] as f32 + 0.3;
+        let mut transform = Transform::from_xyz(scale_x as f32, height, scale_y as f32);
+        transform.rotate_local_x(-0.2);
+        commands
+            .spawn(SceneBundle {
+                scene: model_assets.scale.clone(),
+                transform,
+                ..Default::default()
+            })
+            .insert(Scale(height))
+            .insert(Name::new("Scale"))
+            .insert(DespawnOnTransition);
+    }
 }
 
 fn animate_flag(
@@ -199,11 +262,40 @@ fn animate_flag(
 
 fn level_transition(
     mut commands: Commands,
-    mut state: ResMut<NextState<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
+    current_state: Res<State<GameState>>,
     entities: Query<Entity, With<DespawnOnTransition>>,
+    mut level_manager: ResMut<LevelManager>,
 ) {
     for entity in entities.iter() {
         commands.entity(entity).despawn_recursive();
     }
-    state.set(GameState::Level);
+    commands.insert_resource(Inventory::default());
+    if matches!(current_state.get(), GameState::LevelTransition)
+        && level_manager.current + 1 < level_manager.levels.len()
+    {
+        level_manager.current += 1;
+    }
+    level_manager.get_current_map_mut().reset();
+    next_state.set(GameState::Level);
+}
+
+fn reload_level(
+    mut transition_manager: ResMut<TransitionManager>,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut level_manager: ResMut<LevelManager>,
+) {
+    if keyboard_input.just_pressed(KeyCode::R) {
+        level_manager.get_current_map_mut().reset();
+        *transition_manager = TransitionManager::TransitioningOutReload(0.0);
+    }
+}
+
+fn skip_level(
+    mut transition_manager: ResMut<TransitionManager>,
+    keyboard_input: Res<Input<KeyCode>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::F1) {
+        *transition_manager = TransitionManager::TransitioningOut(0.0);
+    }
 }

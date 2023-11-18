@@ -13,11 +13,13 @@ use player::PlayerPlugin;
 use post_process::PostProcessPlugin;
 use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
 
+mod camera;
 mod clouds;
 mod equipment;
 mod map;
 mod player;
 mod post_process;
+mod scale;
 mod states;
 mod ui;
 mod util;

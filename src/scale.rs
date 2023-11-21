@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{player::Player, states::level::LevelManager};
+use crate::{level_manager::LevelManager, player::Player};
 
 #[derive(Component)]
 pub struct Scale(pub f32);

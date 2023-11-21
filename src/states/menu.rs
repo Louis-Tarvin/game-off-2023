@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
-use crate::{camera::MainCamera, post_process::TransitionSettings};
+use crate::{
+    camera::MainCamera, level_manager::init_level_manager, post_process::TransitionSettings,
+};
 
 use super::{
-    level::init_level_manager,
     loading::FontAssets,
     transition::{update_transition_manager, TransitionManager},
     GameState,

@@ -4,6 +4,7 @@ use crate::{
     camera::{camera_rotation, MainCamera},
     clouds::CloudMaterial,
     equipment::Inventory,
+    level_manager::LevelManager,
     map::{create_map_on_level_load, Map},
     player::clear_player_history,
     scale::{scale_rotation, Scale},
@@ -70,140 +71,8 @@ pub struct Level {
     pub weight_budget: u8,
     pub ladder_unlocked: bool,
     pub rope_unlocked: bool,
-}
-
-#[derive(Debug, Default, Resource, Reflect)]
-#[reflect(Resource)]
-pub struct LevelManager {
-    pub levels: Vec<Level>,
-    pub current: usize,
-}
-impl LevelManager {
-    pub fn get_current_level(&self) -> &Level {
-        &self.levels[self.current]
-    }
-    pub fn get_current_map_mut(&mut self) -> &mut Map {
-        &mut self.levels[self.current].map
-    }
-}
-
-pub fn init_level_manager(mut commands: Commands) {
-    commands.insert_resource(LevelManager {
-        current: 0,
-        levels: vec![
-            Level {
-                map: Map::new(
-                    vec![
-                        vec![5, 6, 7, 6],
-                        vec![4, 4, 3, 5],
-                        vec![4, 3, 3, 4],
-                        vec![4, 2, 2, 3],
-                        vec![1, 1, 1, 2],
-                    ],
-                    vec![
-                        vec![false, false, false, false],
-                        vec![false, false, false, false],
-                        vec![false, true, false, false],
-                        vec![false, false, true, false],
-                        vec![true, true, true, false],
-                    ],
-                    (0, 4),
-                    (2, 1),
-                    None,
-                ),
-                stamina_budget: 13,
-                weight_budget: 0,
-                ladder_unlocked: false,
-                rope_unlocked: false,
-            },
-            Level {
-                map: Map::new(
-                    vec![
-                        vec![4, 6, 4, 6, 6, 4],
-                        vec![4, 6, 2, 6, 5, 5],
-                        vec![3, 3, 1, 3, 3, 2],
-                    ],
-                    vec![
-                        vec![false, false, false, false, false, false],
-                        vec![false, false, false, false, false, false],
-                        vec![false, false, false, false, false, false],
-                    ],
-                    (0, 2),
-                    (5, 1),
-                    None,
-                ),
-                stamina_budget: 8,
-                weight_budget: 4,
-                ladder_unlocked: true,
-                rope_unlocked: false,
-            },
-            Level {
-                map: Map::new(
-                    vec![
-                        vec![6, 6, 6, 6, 5, 5],
-                        vec![4, 4, 3, 4, 3, 2],
-                        vec![2, 3, 2, 4, 2, 2],
-                    ],
-                    vec![
-                        vec![false, false, false, false, false, false],
-                        vec![false, false, false, false, false, false],
-                        vec![false, false, false, false, false, false],
-                    ],
-                    (0, 0),
-                    (5, 2),
-                    None,
-                ),
-                stamina_budget: 9,
-                weight_budget: 2,
-                ladder_unlocked: false,
-                rope_unlocked: true,
-            },
-            Level {
-                map: Map::new(
-                    vec![
-                        vec![7, 7, 7, 6],
-                        vec![6, 5, 5, 5],
-                        vec![3, 3, 3, 3],
-                        vec![2, 1, 1, 1],
-                    ],
-                    vec![
-                        vec![true, true, true, true],
-                        vec![true, true, true, true],
-                        vec![true, true, true, true],
-                        vec![true, true, true, true],
-                    ],
-                    (1, 3),
-                    (2, 0),
-                    Some((0, 0)),
-                ),
-                stamina_budget: 19,
-                weight_budget: 3,
-                ladder_unlocked: true,
-                rope_unlocked: true,
-            },
-            Level {
-                map: Map::new(
-                    vec![
-                        vec![5, 6, 6, 5, 6, 4],
-                        vec![2, 3, 3, 2, 3, 3],
-                        vec![1, 3, 1, 2, 3, 1],
-                    ],
-                    vec![
-                        vec![true, true, true, true, true, true],
-                        vec![true, true, true, true, true, true],
-                        vec![true, true, true, true, true, true],
-                    ],
-                    (0, 2),
-                    (5, 0),
-                    None,
-                ),
-                stamina_budget: 30,
-                weight_budget: 5,
-                ladder_unlocked: true,
-                rope_unlocked: true,
-            },
-        ],
-    })
+    pub potion_unlocked: bool,
+    pub rewind_unlocked: bool,
 }
 
 #[derive(Component)]

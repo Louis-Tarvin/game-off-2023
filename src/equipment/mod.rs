@@ -4,10 +4,12 @@ use crate::states::GameState;
 
 use self::{
     ladder::{handle_ladder_input, Ladder},
+    rewind::handle_rewind_input,
     rope::handle_rope_input,
 };
 
 pub mod ladder;
+pub mod rewind;
 pub mod rope;
 
 pub struct EquipmentPlugin;
@@ -19,7 +21,8 @@ impl Plugin for EquipmentPlugin {
             .insert_resource(Inventory::default())
             .add_systems(
                 Update,
-                (handle_ladder_input, handle_rope_input).run_if(in_state(GameState::Level)),
+                (handle_ladder_input, handle_rope_input, handle_rewind_input)
+                    .run_if(in_state(GameState::Level)),
             );
     }
 }
@@ -29,5 +32,7 @@ impl Plugin for EquipmentPlugin {
 pub struct Inventory {
     pub ladder_count: u8,
     pub rope_count: u8,
+    pub potion_count: u8,
+    pub rewind_count: u8,
     pub weight: u8,
 }

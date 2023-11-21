@@ -16,6 +16,7 @@ use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
 mod camera;
 mod clouds;
 mod equipment;
+mod level_manager;
 mod map;
 mod player;
 mod post_process;

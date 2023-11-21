@@ -3,11 +3,9 @@ use std::collections::hash_map::Entry;
 use bevy::prelude::*;
 
 use crate::{
+    level_manager::LevelManager,
     player::{Player, PlayerHistory, PlayerHistoryEvent, PlayerState},
-    states::{
-        level::{DespawnOnTransition, LevelManager},
-        loading::ModelAssets,
-    },
+    states::{level::DespawnOnTransition, loading::ModelAssets},
     util::CardinalDirection,
 };
 

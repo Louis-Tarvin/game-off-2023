@@ -7,7 +7,8 @@ use crate::{
         ladder::{HorizontalLadderKey, VerticalLadderKey},
         rope::RopeKey,
     },
-    states::level::{DespawnOnTransition, LevelManager},
+    level_manager::LevelManager,
+    states::level::DespawnOnTransition,
     util::CardinalDirection,
 };
 

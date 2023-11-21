@@ -7,16 +7,15 @@ use crate::{
         ladder::{
             place_horizontal_ladder, place_vertical_ladder, HorizontalLadderKey, VerticalLadderKey,
         },
+        rewind::RewindRune,
         rope::RopeKey,
         Inventory,
     },
+    level_manager::LevelManager,
     map::Map,
     scale::check_if_at_scale,
     states::{
-        level::{DespawnOnTransition, LevelManager},
-        loading::ModelAssets,
-        transition::TransitionManager,
-        GameState,
+        level::DespawnOnTransition, loading::ModelAssets, transition::TransitionManager, GameState,
     },
     ui::equipment::{InfoUiRoot, PickingUiRoot},
     util::{Alignment, CardinalDirection},
@@ -168,7 +167,7 @@ impl Player {
                     height: current_elevation,
                     alignment: direction.into(),
                 }) {
-                    // elevation drops -> check if there is a ladder
+                    // elevation drops -> check if there is a horizontal ladder
                     self.stamina.checked_sub(MOVE_STAMINA).map(|stamina| Self {
                         stamina,
                         grid_pos_x: new_x as u8,
@@ -179,11 +178,11 @@ impl Player {
                             alignment: direction.into(),
                         }),
                     })
-                } else if map.grid_climbable[new_y][new_x]
+                } else if map.grid_climbable[self.grid_pos_y as usize][self.grid_pos_x as usize]
                     || map.is_ladder_or_rope(
                         new_x as u8,
                         new_y as u8,
-                        current_elevation + 1,
+                        current_elevation,
                         direction.reverse(),
                     )
                 {
@@ -451,6 +450,15 @@ impl Player {
             }
         }
     }
+
+    fn has_direction_changed(&self, other: &Player) -> bool {
+        if let PlayerState::Standing(dir1) = self.state {
+            if let PlayerState::Standing(dir2) = other.state {
+                return dir1 != dir2;
+            }
+        }
+        false
+    }
 }
 
 fn spawn_player(
@@ -529,6 +537,9 @@ pub enum PlayerHistoryEvent {
     PlaceRope(RopeKey),
     PickUpVerticalLadder(VerticalLadderKey),
     PickUpHorizontalLadder(HorizontalLadderKey),
+    PlaceRune,
+    // (x, y, timestamp)
+    Teleport((u8, u8, f32)),
 }
 
 #[derive(Debug, Default, Resource, Reflect)]
@@ -545,6 +556,7 @@ fn player_input(
     mut info_ui: Query<&mut Visibility, (With<InfoUiRoot>, Without<PickingUiRoot>)>,
     mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
+    mut rewind_runes: Query<(Entity, &mut RewindRune)>,
 ) {
     let mut direction = None;
     if keyboard_input.any_just_pressed([KeyCode::W, KeyCode::Up]) {
@@ -566,6 +578,11 @@ fn player_input(
                         .get_single_mut()
                         .expect("There should only be one player");
                     *player = old_player;
+
+                    // undo rune countdowns
+                    for (_, mut rune) in rewind_runes.iter_mut() {
+                        rune.countdown += 1;
+                    }
                 }
                 PlayerHistoryEvent::PlaceVerticalLadder(key) => {
                     if let Some(entity) = level_manager
@@ -657,12 +674,54 @@ fn player_input(
                         }
                     }
                 }
+                PlayerHistoryEvent::PlaceRune => {
+                    // find the most recently placed rune and delete it
+                    let mut most_recent = None;
+                    let mut most_recent_timestamp = 0.0;
+                    for (entity, rune) in rewind_runes.iter() {
+                        if rune.timestamp > most_recent_timestamp {
+                            most_recent = Some(entity);
+                            most_recent_timestamp = rune.timestamp;
+                        }
+                    }
+                    if let Some(entity) = most_recent {
+                        commands.entity(entity).despawn_recursive();
+                        inventory.rewind_count += 1;
+                    } else {
+                        warn!("Tried to undo rune placement, but no runes exist!");
+                    }
+                }
+                PlayerHistoryEvent::Teleport((x, y, timestamp)) => {
+                    let player = player
+                        .get_single()
+                        .expect("There should only be one player");
+                    let player_height =
+                        level_manager.get_current_level().map.grid_heights[y as usize][x as usize];
+                    commands
+                        .spawn(SceneBundle {
+                            scene: model_assets.rune.clone(),
+                            transform: Transform::from_xyz(
+                                x as f32,
+                                player_height as f32 + 0.01,
+                                y as f32,
+                            ),
+                            ..Default::default()
+                        })
+                        .insert(RewindRune {
+                            x,
+                            y,
+                            countdown: 1,
+                            stamina: player.stamina,
+                            timestamp,
+                        });
+                }
             }
         } else {
             // swap UI
             *picking_ui.get_single_mut().unwrap() = Visibility::Visible;
             *info_ui.get_single_mut().unwrap() = Visibility::Hidden;
         }
+        return;
     }
 
     if let Some(direction) = direction {
@@ -671,13 +730,37 @@ fn player_input(
             .expect("There should only be one player");
         let new_player = player.go(direction, &level_manager.get_current_level().map);
         if let Some(new_player) = new_player {
-            player_history
-                .0
-                .push(PlayerHistoryEvent::PlayerMove(player.clone()));
-            *player = new_player;
-            // swap UI
-            *picking_ui.get_single_mut().unwrap() = Visibility::Hidden;
-            *info_ui.get_single_mut().unwrap() = Visibility::Visible;
+            let mut teleported = false;
+            if !player.has_direction_changed(&new_player) {
+                // Player has moved
+                player_history
+                    .0
+                    .push(PlayerHistoryEvent::PlayerMove(player.clone()));
+                // decrement the counters of each rewind rune. If it has reached 0 we teleport
+                for (entity, mut rune) in rewind_runes.iter_mut() {
+                    rune.countdown -= 1;
+                    if rune.countdown == 0 {
+                        // teleport the player
+                        player.grid_pos_x = rune.x;
+                        player.grid_pos_y = rune.y;
+                        player.stamina = rune.stamina;
+                        player.state = PlayerState::Standing(CardinalDirection::South);
+                        teleported = true;
+                        commands.entity(entity).despawn_recursive();
+                        player_history.0.push(PlayerHistoryEvent::Teleport((
+                            rune.x,
+                            rune.y,
+                            rune.timestamp,
+                        )))
+                    }
+                }
+            }
+            if !teleported {
+                *player = new_player;
+                // swap UI
+                *picking_ui.get_single_mut().unwrap() = Visibility::Hidden;
+                *info_ui.get_single_mut().unwrap() = Visibility::Visible;
+            }
         }
     }
 }

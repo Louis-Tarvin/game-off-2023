@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
 use crate::{
+    level_manager::LevelManager,
     player::{Player, PlayerState},
-    states::level::LevelManager,
     util::CardinalDirection,
 };
 

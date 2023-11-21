@@ -2,10 +2,9 @@ use bevy::prelude::*;
 
 use crate::{
     equipment::Inventory,
-    states::{
-        level::{DespawnOnTransition, LevelManager},
-        loading::FontAssets,
-    },
+    level_manager::LevelManager,
+    player::Player,
+    states::{level::DespawnOnTransition, loading::FontAssets},
 };
 
 use super::{
@@ -37,6 +36,8 @@ pub struct SubtractButton {
 pub enum Equipment {
     Ladder,
     Rope,
+    Potion,
+    Rewind,
 }
 
 struct EquipmentInfo {
@@ -218,28 +219,52 @@ pub fn draw_equimpment_cards(
         .with_children(|parent| {
             let level = level_manager.get_current_level();
             if level.ladder_unlocked {
-            draw_equimpment_card(
-                parent,
-                font_assets.fira_sans.clone(),
-                EquipmentInfo {
-                    variant: Equipment::Ladder,
-                    name: "Ladder".to_string(),
-                    description: "Used to climb up two squares using less stamina. Can also be placed horizontally to cross gaps.".to_string(),
-                    weight: 2,
-                },
-            );
+                draw_equimpment_card(
+                    parent,
+                    font_assets.fira_sans.clone(),
+                    EquipmentInfo {
+                        variant: Equipment::Ladder,
+                        name: "Ladder".to_string(),
+                        description: "Used to climb up two squares using less stamina. Can also be placed horizontally to cross gaps.".to_string(),
+                        weight: 2,
+                    },
+                );
             }
             if level.rope_unlocked {
-            draw_equimpment_card(
-                parent,
-                font_assets.fira_sans.clone(),
-                EquipmentInfo {
-                    variant: Equipment::Rope,
-                    name: "Rope".to_string(),
-                    description: "Used to descend/ascend cliffs of any height using less stamina.".to_string(),
-                    weight: 1,
-                },
-            );
+                draw_equimpment_card(
+                    parent,
+                    font_assets.fira_sans.clone(),
+                    EquipmentInfo {
+                        variant: Equipment::Rope,
+                        name: "Rope".to_string(),
+                        description: "Used to descend/ascend cliffs of any height using less stamina.".to_string(),
+                        weight: 1,
+                    },
+                );
+            }
+            if level.rewind_unlocked {
+                draw_equimpment_card(
+                    parent,
+                    font_assets.fira_sans.clone(),
+                    EquipmentInfo {
+                        variant: Equipment::Rewind,
+                        name: "Rune of Rewind".to_string(),
+                        description: "Once placed you have 5 turns until you are teleported back to it, reclaiming any lost stamina (placed equipment remains)".to_string(),
+                        weight: 1,
+                    },
+                );
+            }
+            if level.potion_unlocked {
+                draw_equimpment_card(
+                    parent,
+                    font_assets.fira_sans.clone(),
+                    EquipmentInfo {
+                        variant: Equipment::Potion,
+                        name: "Stamina Potion".to_string(),
+                        description: "A flask of green liquid. Gives a small stamina boost".to_string(),
+                        weight: 2
+                    }
+                );
             }
         });
 }
@@ -252,6 +277,8 @@ pub fn update_inventory_counters(
         match counter.0 {
             Equipment::Ladder => text.sections[1].value = format!("{}", inventory.ladder_count),
             Equipment::Rope => text.sections[1].value = format!("{}", inventory.rope_count),
+            Equipment::Potion => text.sections[1].value = format!("{}", inventory.potion_count),
+            Equipment::Rewind => text.sections[1].value = format!("{}", inventory.rewind_count),
         }
     }
 }
@@ -263,6 +290,7 @@ pub fn handle_add_buttons(
     >,
     mut inventory: ResMut<Inventory>,
     level_manager: Res<LevelManager>,
+    mut player: Query<&mut Player>,
 ) {
     for (interaction, mut color, add) in &mut interaction_query {
         match *interaction {
@@ -273,6 +301,11 @@ pub fn handle_add_buttons(
                     match add.equipment {
                         Equipment::Ladder => inventory.ladder_count += 1,
                         Equipment::Rope => inventory.rope_count += 1,
+                        Equipment::Potion => {
+                            inventory.potion_count += 1;
+                            player.get_single_mut().unwrap().stamina += 2;
+                        }
+                        Equipment::Rewind => inventory.rewind_count += 1,
                     }
                 }
             }
@@ -292,6 +325,7 @@ pub fn handle_subtract_buttons(
         (Changed<Interaction>, With<Button>),
     >,
     mut inventory: ResMut<Inventory>,
+    mut player: Query<&mut Player>,
 ) {
     for (interaction, mut color, sub) in &mut interaction_query {
         match *interaction {
@@ -305,6 +339,19 @@ pub fn handle_subtract_buttons(
                 Equipment::Rope => {
                     if inventory.rope_count > 0 {
                         inventory.rope_count -= 1;
+                        inventory.weight -= sub.weight;
+                    }
+                }
+                Equipment::Potion => {
+                    if inventory.potion_count > 0 {
+                        inventory.potion_count -= 1;
+                        inventory.weight -= sub.weight;
+                        player.get_single_mut().unwrap().stamina -= 2;
+                    }
+                }
+                Equipment::Rewind => {
+                    if inventory.rewind_count > 0 {
+                        inventory.rewind_count -= 1;
                         inventory.weight -= sub.weight;
                     }
                 }
@@ -396,9 +443,9 @@ fn draw_inventory_icon(
                     };
                     parent
                         .spawn(TextBundle::from_sections([
-                            TextSection::new("(", style.clone()),
+                            TextSection::new(" ", style.clone()),
                             TextSection::new("0", style.clone()),
-                            TextSection::new(")", style),
+                            TextSection::new(" ", style),
                         ]))
                         .insert(InventoryCounter(equipment));
                 });
@@ -439,6 +486,14 @@ pub fn draw_inventory_icons(
             }
             if level.rope_unlocked {
                 draw_inventory_icon(parent, font_assets.fira_sans.clone(), Equipment::Rope, '2');
+            }
+            if level.rewind_unlocked {
+                draw_inventory_icon(
+                    parent,
+                    font_assets.fira_sans.clone(),
+                    Equipment::Rewind,
+                    '3',
+                );
             }
         });
 }

@@ -1,8 +1,10 @@
 use std::collections::hash_map::{Entry, VacantEntry};
 
 use bevy::prelude::*;
+use bevy_kira_audio::{AudioChannel, AudioControl};
 
 use crate::{
+    audio::{AudioAssets, SoundChannel},
     level_manager::LevelManager,
     map::Map,
     player::{Player, PlayerHistory, PlayerHistoryEvent},
@@ -156,6 +158,8 @@ pub fn handle_ladder_input(
     mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
     mut player_history: ResMut<PlayerHistory>,
+    sound_channel: Res<AudioChannel<SoundChannel>>,
+    audio_assets: Res<AudioAssets>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Key1) {
         let map = level_manager.get_current_map_mut();
@@ -217,6 +221,8 @@ pub fn handle_ladder_input(
                         player_history
                             .0
                             .push(PlayerHistoryEvent::PlaceVerticalLadder(key));
+
+                        sound_channel.play(audio_assets.pop.clone());
                     }
                 }
             }
@@ -262,6 +268,8 @@ pub fn handle_ladder_input(
                             player_history
                                 .0
                                 .push(PlayerHistoryEvent::PlaceHorizontalLadder(key));
+
+                            sound_channel.play(audio_assets.pop.clone());
                         }
                     }
                 }

@@ -40,3 +40,4 @@ bevy = { version = "0.11", default-features = false, features = [
 bevy_kira_audio = { version = "0.16" }
 bevy_asset_loader = { version = "0.17" }
 bevy_editor_pls = "0.5.0"
+rand = "0.8.5"

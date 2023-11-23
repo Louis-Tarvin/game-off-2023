@@ -1,6 +1,11 @@
 use bevy::prelude::*;
+use bevy_kira_audio::{AudioChannel, AudioControl};
 
-use crate::{level_manager::LevelManager, player::Player};
+use crate::{
+    audio::{AudioAssets, SoundChannel},
+    level_manager::LevelManager,
+    player::Player,
+};
 
 #[derive(Component)]
 pub struct Scale(pub f32);
@@ -20,6 +25,8 @@ pub fn check_if_at_scale(
     player: Query<&Player>,
     level_manager: Res<LevelManager>,
     scale_entities: Query<Entity, With<Scale>>,
+    sound_channel: Res<AudioChannel<SoundChannel>>,
+    audio_assets: Res<AudioAssets>,
 ) {
     let map = &level_manager.get_current_level().map;
     if let Some((x, y)) = map.scale_pos {
@@ -30,8 +37,9 @@ pub fn check_if_at_scale(
         if player.grid_pos_x == x && player.grid_pos_y == y {
             for entity in scale_entities.iter() {
                 commands.entity(entity).despawn_recursive();
+                sound_channel.play(audio_assets.pickup.clone());
             }
-            // TODO play sound and add point?
+            // TODO: add point
         }
     }
 }

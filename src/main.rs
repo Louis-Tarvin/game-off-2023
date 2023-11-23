@@ -4,15 +4,17 @@
 // Feel free to delete this line.
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+use audio::{MusicChannel, SoundChannel, VolumeSettings};
 use bevy::prelude::*;
 use bevy_editor_pls::EditorPlugin;
-use bevy_kira_audio::AudioPlugin;
+use bevy_kira_audio::{AudioApp, AudioPlugin};
 use clouds::CloudMaterial;
 use equipment::EquipmentPlugin;
 use player::PlayerPlugin;
 use post_process::PostProcessPlugin;
 use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
 
+mod audio;
 mod camera;
 mod clouds;
 mod equipment;
@@ -46,5 +48,8 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(Msaa::Sample4)
+        .add_audio_channel::<MusicChannel>()
+        .add_audio_channel::<SoundChannel>()
+        .insert_resource(VolumeSettings::default())
         .run();
 }

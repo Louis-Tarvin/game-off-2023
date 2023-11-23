@@ -1,8 +1,11 @@
 use std::collections::hash_map::Entry;
 
 use bevy::prelude::*;
+use bevy_kira_audio::{AudioChannel, AudioControl};
+use rand::Rng;
 
 use crate::{
+    audio::{AudioAssets, SoundChannel},
     equipment::{
         ladder::{
             place_horizontal_ladder, place_vertical_ladder, HorizontalLadderKey, VerticalLadderKey,
@@ -557,6 +560,8 @@ fn player_input(
     mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
     mut rewind_runes: Query<(Entity, &mut RewindRune)>,
+    sound_channel: Res<AudioChannel<SoundChannel>>,
+    audio_assets: Res<AudioAssets>,
 ) {
     let mut direction = None;
     if keyboard_input.any_just_pressed([KeyCode::W, KeyCode::Up]) {
@@ -751,7 +756,8 @@ fn player_input(
                             rune.x,
                             rune.y,
                             rune.timestamp,
-                        )))
+                        )));
+                        sound_channel.play(audio_assets.teleport.clone());
                     }
                 }
             }
@@ -760,6 +766,14 @@ fn player_input(
                 // swap UI
                 *picking_ui.get_single_mut().unwrap() = Visibility::Hidden;
                 *info_ui.get_single_mut().unwrap() = Visibility::Visible;
+                // play random footstep sound
+                match rand::thread_rng().gen_range(0..4) {
+                    0 => sound_channel.play(audio_assets.step1.clone()),
+                    1 => sound_channel.play(audio_assets.step2.clone()),
+                    2 => sound_channel.play(audio_assets.step3.clone()),
+                    3 => sound_channel.play(audio_assets.step4.clone()),
+                    _ => unreachable!(),
+                };
             }
         }
     }
@@ -769,6 +783,8 @@ fn check_if_at_flag(
     player: Query<&Player>,
     level_manager: Res<LevelManager>,
     mut transition_manager: ResMut<TransitionManager>,
+    sound_channel: Res<AudioChannel<SoundChannel>>,
+    audio_assets: Res<AudioAssets>,
 ) {
     let player = player
         .get_single()
@@ -779,6 +795,7 @@ fn check_if_at_flag(
         && player.grid_pos_x == map.flag_pos.0
         && player.grid_pos_y == map.flag_pos.1
     {
+        sound_channel.play(audio_assets.woosh.clone());
         *transition_manager = TransitionManager::TransitioningOut(0.0);
     }
 }

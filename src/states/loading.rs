@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 use bevy_asset_loader::prelude::*;
-use bevy_kira_audio::AudioSource;
 
-use crate::states::transition::TransitionManager;
+use crate::{audio::AudioAssets, states::transition::TransitionManager};
 
 use super::GameState;
 
@@ -26,12 +25,6 @@ impl Plugin for LoadingPlugin {
 pub struct FontAssets {
     #[asset(path = "fonts/FiraSans-Bold.ttf")]
     pub fira_sans: Handle<Font>,
-}
-
-#[derive(AssetCollection, Resource)]
-pub struct AudioAssets {
-    #[asset(path = "audio/flying.ogg")]
-    pub flying: Handle<AudioSource>,
 }
 
 #[derive(AssetCollection, Resource)]

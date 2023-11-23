@@ -1,6 +1,8 @@
 use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy_kira_audio::{AudioChannel, AudioControl};
 
 use crate::{
+    audio::{AudioAssets, SoundChannel},
     camera::{camera_rotation, MainCamera},
     clouds::CloudMaterial,
     equipment::Inventory,
@@ -199,6 +201,8 @@ fn reload_level(
     keyboard_input: Res<Input<KeyCode>>,
     mut level_manager: ResMut<LevelManager>,
     mut main_camera: Query<&mut MainCamera>,
+    sound_channel: Res<AudioChannel<SoundChannel>>,
+    audio_assets: Res<AudioAssets>,
 ) {
     if keyboard_input.just_pressed(KeyCode::R) {
         // remove ladders/ropes etc.
@@ -208,6 +212,7 @@ fn reload_level(
             camera.direction = CardinalDirection::North;
             camera.angle_change = 0.0;
         }
+        sound_channel.play(audio_assets.woosh.clone());
         *transition_manager = TransitionManager::TransitioningOutReload(0.0);
     }
 }
@@ -215,8 +220,11 @@ fn reload_level(
 fn skip_level(
     mut transition_manager: ResMut<TransitionManager>,
     keyboard_input: Res<Input<KeyCode>>,
+    sound_channel: Res<AudioChannel<SoundChannel>>,
+    audio_assets: Res<AudioAssets>,
 ) {
     if keyboard_input.just_pressed(KeyCode::F1) {
+        sound_channel.play(audio_assets.woosh.clone());
         *transition_manager = TransitionManager::TransitioningOut(0.0);
     }
 }

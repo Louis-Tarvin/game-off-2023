@@ -250,6 +250,9 @@ pub fn handle_ladder_input(
                     Entry::Occupied(o) => {
                         // there is already a ladder -> pick it up
                         inventory.ladder_count += 1;
+                        player_history
+                            .0
+                            .push(PlayerHistoryEvent::PickUpHorizontalLadder(key));
                         commands.entity(o.remove()).despawn_recursive();
                     }
                     Entry::Vacant(v) => {

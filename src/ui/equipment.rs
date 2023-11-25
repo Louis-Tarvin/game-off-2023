@@ -60,10 +60,11 @@ fn draw_equimpment_card(
     parent
         .spawn(NodeBundle {
             style: Style {
-                width: Val::Px(200.0),
-                height: Val::Px(300.0),
+                width: Val::Px(400.0),
+                height: Val::Px(160.0),
                 padding: UiRect::all(Val::Px(10.)),
-                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Row,
                 ..Default::default()
             },
             ..Default::default()
@@ -73,11 +74,10 @@ fn draw_equimpment_card(
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        height: Val::Px(200.0),
+                        height: Val::Px(150.0),
+                        flex_grow: 1.0,
                         padding: UiRect::all(Val::Px(5.)),
-                        margin: UiRect::all(Val::Px(10.)),
-                        flex_direction: FlexDirection::Column,
-                        justify_content: JustifyContent::SpaceBetween,
+                        flex_direction: FlexDirection::Row,
                         align_items: AlignItems::Center,
                         ..Default::default()
                     },
@@ -85,51 +85,77 @@ fn draw_equimpment_card(
                     ..Default::default()
                 })
                 .with_children(|parent| {
-                    parent.spawn(TextBundle::from_section(
-                        equipment.name,
-                        TextStyle {
-                            font: font.clone(),
-                            font_size: 20.0,
-                            color: Color::WHITE,
-                        },
-                    ));
-                    parent.spawn(ImageBundle {
-                        image: UiImage {
-                            texture,
+                    // left column
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Percent(40.0),
+                                flex_direction: FlexDirection::Column,
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::SpaceBetween,
+                                ..Default::default()
+                            },
                             ..Default::default()
-                        },
-                        style: Style {
-                            width: Val::Px(40.0),
-                            height: Val::Px(40.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
+                        })
+                        .with_children(|parent| {
+                            parent.spawn(TextBundle::from_section(
+                                equipment.name,
+                                TextStyle {
+                                    font: font.clone(),
+                                    font_size: 20.0,
+                                    color: Color::WHITE,
+                                },
+                            ));
+                            parent.spawn(ImageBundle {
+                                image: UiImage {
+                                    texture,
+                                    ..Default::default()
+                                },
+                                style: Style {
+                                    width: Val::Px(80.0),
+                                    height: Val::Px(80.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..Default::default()
+                                },
+                                ..Default::default()
+                            });
+                            parent.spawn(TextBundle::from_section(
+                                format!("weight: {}", equipment.weight),
+                                TextStyle {
+                                    font: font.clone(),
+                                    font_size: 15.0,
+                                    color: Color::WHITE,
+                                },
+                            ));
+                        });
+                    // right column
+                    parent
+                        .spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Percent(60.0),
+                                ..Default::default()
+                            },
                             ..Default::default()
-                        },
-                        ..Default::default()
-                    });
-                    parent.spawn(TextBundle::from_section(
-                        format!("weight: {}", equipment.weight),
-                        TextStyle {
-                            font: font.clone(),
-                            font_size: 15.0,
-                            color: Color::WHITE,
-                        },
-                    ));
-                    parent.spawn(TextBundle::from_section(
-                        equipment.description,
-                        TextStyle {
-                            font: font.clone(),
-                            font_size: 15.0,
-                            color: Color::WHITE,
-                        },
-                    ));
+                        })
+                        .with_children(|parent| {
+                            parent.spawn(TextBundle::from_section(
+                                equipment.description,
+                                TextStyle {
+                                    font: font.clone(),
+                                    font_size: 15.0,
+                                    color: Color::WHITE,
+                                },
+                            ));
+                        });
                 });
             // button wrapper
             parent
                 .spawn(NodeBundle {
                     style: Style {
-                        flex_direction: FlexDirection::Row,
-                        flex_grow: 1.0,
+                        flex_direction: FlexDirection::ColumnReverse,
+                        margin: UiRect::left(Val::Px(5.0)),
+                        width: Val::Px(60.0),
                         ..Default::default()
                     },
                     ..Default::default()
@@ -139,8 +165,8 @@ fn draw_equimpment_card(
                     parent
                         .spawn(ButtonBundle {
                             style: Style {
-                                width: Val::Px(30.0),
-                                height: Val::Px(30.0),
+                                width: Val::Px(60.0),
+                                height: Val::Px(50.0),
                                 align_items: AlignItems::Center,
                                 justify_content: JustifyContent::Center,
                                 ..Default::default()
@@ -171,10 +197,9 @@ fn draw_equimpment_card(
                     parent
                         .spawn(NodeBundle {
                             style: Style {
-                                height: Val::Px(30.0),
                                 align_items: AlignItems::Center,
                                 justify_content: JustifyContent::Center,
-                                flex_grow: 1.0,
+                                height: Val::Px(50.0),
                                 ..Default::default()
                             },
                             background_color: UI_YELLOW.into(),
@@ -192,8 +217,8 @@ fn draw_equimpment_card(
                     parent
                         .spawn(ButtonBundle {
                             style: Style {
-                                width: Val::Px(30.0),
-                                height: Val::Px(30.0),
+                                width: Val::Px(60.0),
+                                height: Val::Px(50.0),
                                 align_items: AlignItems::Center,
                                 justify_content: JustifyContent::Center,
                                 ..Default::default()
@@ -219,6 +244,9 @@ fn draw_equimpment_card(
         });
 }
 
+#[derive(Component)]
+pub struct WeightText;
+
 pub fn draw_equimpment_cards(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
@@ -229,10 +257,10 @@ pub fn draw_equimpment_cards(
         .spawn(NodeBundle {
             style: Style {
                 position_type: PositionType::Absolute,
-                bottom: Val::Px(0.),
-                width: Val::Percent(100.0),
-                height: Val::Px(300.0),
-                flex_direction: FlexDirection::Row,
+                right: Val::Px(0.),
+                width: Val::Px(400.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::Center,
                 ..Default::default()
             },
@@ -243,6 +271,33 @@ pub fn draw_equimpment_cards(
         .insert(Name::new("Equipment Cards UI"))
         .with_children(|parent| {
             let level = level_manager.get_current_level();
+            if level.ladder_unlocked || level.rope_unlocked || level.potion_unlocked || level.rewind_unlocked {
+                // Draw weight budget
+                parent.spawn(NodeBundle {
+                    style: Style {
+                        width: Val::Px(380.0),
+                        height: Val::Px(50.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        align_self: AlignSelf::Center,
+                        ..Default::default()
+                    },
+                    background_color: UI_YELLOW.into(),
+                    ..Default::default()
+                }).with_children(|parent| {
+                    let style = TextStyle {
+                        font: font_assets.fira_sans.clone(),
+                        font_size: 35.0,
+                        color: Color::WHITE
+                    };
+                    parent.spawn(TextBundle::from_sections([
+                        TextSection::new("Current weight: ", style.clone()),
+                        TextSection::new("0", style.clone()),
+                        TextSection::new(format!("/{}", level.weight_budget), style),
+                    ]))
+                    .insert(WeightText);
+                });
+            }
             if level.ladder_unlocked {
                 draw_equimpment_card(
                     parent,
@@ -309,6 +364,12 @@ pub fn update_inventory_counters(
             Equipment::Potion => text.sections[1].value = format!("{}", inventory.potion_count),
             Equipment::Rewind => text.sections[1].value = format!("{}", inventory.rewind_count),
         }
+    }
+}
+
+pub fn update_weight_text(mut text: Query<&mut Text, With<WeightText>>, inventory: Res<Inventory>) {
+    for mut text in text.iter_mut() {
+        text.sections[1].value = inventory.weight.to_string();
     }
 }
 

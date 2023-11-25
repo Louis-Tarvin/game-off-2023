@@ -7,7 +7,7 @@ use crate::{
     util::CardinalDirection,
 };
 
-use super::constants::*;
+use super::{constants::*, UiRoot};
 
 #[derive(Debug, Default, Resource)]
 pub struct StaminaCosts {
@@ -29,7 +29,7 @@ pub fn setup_keys_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
                 justify_items: JustifyItems::Center,
                 align_items: AlignItems::Center,
                 left: Val::Px(0.0),
-                top: Val::Px(100.0),
+                top: Val::Px(130.0),
                 width: Val::Px(200.0),
                 height: Val::Px(100.0),
                 ..Default::default()
@@ -38,6 +38,7 @@ pub fn setup_keys_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
             ..Default::default()
         })
         .insert(DespawnOnTransition)
+        .insert(UiRoot)
         .insert(Name::new("Keys UI"))
         .with_children(|parent| {
             let text_style = TextStyle {

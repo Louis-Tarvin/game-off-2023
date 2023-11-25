@@ -13,6 +13,7 @@ use equipment::EquipmentPlugin;
 use player::PlayerPlugin;
 use post_process::PostProcessPlugin;
 use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
+use ui::UiPlugin;
 
 mod audio;
 mod camera;
@@ -39,6 +40,7 @@ fn main() {
             LevelPlugin,
             PlayerPlugin,
             EquipmentPlugin,
+            UiPlugin,
             PostProcessPlugin,
         ))
         .add_state::<states::GameState>()

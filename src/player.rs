@@ -16,9 +16,12 @@ use crate::{
     },
     level_manager::LevelManager,
     map::Map,
-    scale::check_if_at_scale,
+    scale::{check_if_at_scale, spawn_scale, ScaleCounter},
     states::{
-        level::DespawnOnTransition, loading::ModelAssets, transition::TransitionManager, GameState,
+        level::DespawnOnTransition,
+        loading::{ModelAssets, TextureAssets},
+        transition::TransitionManager,
+        GameState,
     },
     ui::equipment::{InfoUiRoot, PickingUiRoot},
     util::{Alignment, CardinalDirection},
@@ -535,6 +538,7 @@ fn update_player_position(
 #[derive(Debug, Reflect)]
 pub enum PlayerHistoryEvent {
     PlayerMove(Player),
+    PlayerMoveToScale(Player),
     PlaceVerticalLadder(VerticalLadderKey),
     PlaceHorizontalLadder(HorizontalLadderKey),
     PlaceRope(RopeKey),
@@ -559,7 +563,11 @@ fn player_input(
     mut info_ui: Query<&mut Visibility, (With<InfoUiRoot>, Without<PickingUiRoot>)>,
     mut inventory: ResMut<Inventory>,
     model_assets: Res<ModelAssets>,
+    texture_assets: Res<TextureAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     mut rewind_runes: Query<(Entity, &mut RewindRune)>,
+    mut scale_counter: ResMut<ScaleCounter>,
     sound_channel: Res<AudioChannel<SoundChannel>>,
     audio_assets: Res<AudioAssets>,
 ) {
@@ -587,6 +595,35 @@ fn player_input(
                     // undo rune countdowns
                     for (_, mut rune) in rewind_runes.iter_mut() {
                         rune.countdown += 1;
+                    }
+                }
+                PlayerHistoryEvent::PlayerMoveToScale(old_player) => {
+                    let mut player = player
+                        .get_single_mut()
+                        .expect("There should only be one player");
+                    *player = old_player;
+
+                    // undo rune countdowns
+                    for (_, mut rune) in rewind_runes.iter_mut() {
+                        rune.countdown += 1;
+                    }
+
+                    // Spawn scale
+                    let map = &level_manager.get_current_level().map;
+                    if let Some((scale_x, scale_y)) = map.scale_pos {
+                        spawn_scale(
+                            commands,
+                            scale_x,
+                            scale_y,
+                            map.grid_heights[scale_y as usize][scale_x as usize],
+                            model_assets.scale.clone(),
+                        );
+                    }
+                    // decrement scale counter
+                    if scale_counter.0 > 0 {
+                        scale_counter.0 -= 1;
+                    } else {
+                        warn!("Un-did scale pickup, but the scale counter was zero!");
                     }
                 }
                 PlayerHistoryEvent::PlaceVerticalLadder(key) => {
@@ -703,12 +740,20 @@ fn player_input(
                     let player_height =
                         level_manager.get_current_level().map.grid_heights[y as usize][x as usize];
                     commands
-                        .spawn(SceneBundle {
-                            scene: model_assets.rune.clone(),
+                        .spawn(MaterialMeshBundle {
+                            mesh: meshes.add(Mesh::from(shape::Plane {
+                                size: 1.0,
+                                subdivisions: 0,
+                            })),
+                            material: materials.add(StandardMaterial {
+                                base_color_texture: Some(texture_assets.rune_circle.clone()),
+                                alpha_mode: AlphaMode::Blend,
+                                ..Default::default()
+                            }),
                             transform: Transform::from_xyz(
-                                x as f32,
+                                player.grid_pos_x as f32,
                                 player_height as f32 + 0.01,
-                                y as f32,
+                                player.grid_pos_y as f32,
                             ),
                             ..Default::default()
                         })

@@ -8,19 +8,16 @@ use crate::{
     camera::MainCamera,
     level_manager::init_level_manager,
     post_process::TransitionSettings,
-    ui::constants::{UI_YELLOW, UI_YELLOW_HOVER},
+    ui::{
+        constants::{UI_YELLOW, UI_YELLOW_HOVER},
+        UiRoot,
+    },
 };
 
-use super::{
-    loading::FontAssets,
-    transition::{update_transition_manager, TransitionManager},
-    GameState,
-};
+use super::{loading::FontAssets, transition::TransitionManager, GameState};
 
 pub struct MenuPlugin;
 
-/// This plugin is responsible for the game menu (containing only one button...)
-/// The menu is only drawn during the State `GameState::Menu` and is removed when that state is exited
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
@@ -31,12 +28,7 @@ impl Plugin for MenuPlugin {
             Update,
             (button_system, update_button_volume_text).run_if(in_state(GameState::MainMenu)),
         )
-        .add_systems(OnExit(GameState::MainMenu), cleanup_menu)
-        .add_systems(
-            Update,
-            update_transition_manager
-                .run_if(in_state(GameState::MainMenu).or_else(in_state(GameState::Level))),
-        );
+        .add_systems(OnExit(GameState::MainMenu), cleanup_menu);
     }
 }
 
@@ -78,6 +70,7 @@ fn setup_menu(
             ..Default::default()
         })
         .insert(MainMenuRoot)
+        .insert(UiRoot)
         .with_children(|parent| {
             add_button(
                 parent,

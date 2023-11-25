@@ -5,7 +5,7 @@ use crate::{
     states::{level::DespawnOnTransition, loading::FontAssets},
 };
 
-use super::constants::UI_YELLOW;
+use super::{constants::UI_YELLOW, UiRoot};
 
 #[derive(Debug, Component)]
 pub struct StaminaText;
@@ -26,6 +26,7 @@ pub fn setup_stamina_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
             ..Default::default()
         })
         .insert(DespawnOnTransition)
+        .insert(UiRoot)
         .insert(Name::new("Stamina UI"))
         .with_children(|parent| {
             let style = TextStyle {

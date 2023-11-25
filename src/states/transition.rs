@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{post_process::TransitionSettings, util::cubic_ease_in_out};
+use crate::{post_process::TransitionSettings, ui::UiRoot, util::cubic_ease_in_out};
 
 use super::GameState;
 
@@ -59,5 +59,24 @@ pub fn update_transition_manager(
                 *transition_manager = TransitionManager::TransitioningOutReload(new_p);
             }
         }
+    }
+}
+
+pub fn hide_ui_on_transition(
+    mut ui_roots: Query<&mut Visibility, With<UiRoot>>,
+    transition_manager: Res<TransitionManager>,
+) {
+    match *transition_manager {
+        TransitionManager::Normal => {
+            // for mut visibility in ui_roots.iter_mut() {
+            // *visibility = Visibility::Visible;
+            // }
+        }
+        TransitionManager::TransitioningOut(_) | TransitionManager::TransitioningOutReload(_) => {
+            for mut visibility in ui_roots.iter_mut() {
+                *visibility = Visibility::Hidden;
+            }
+        }
+        _ => {}
     }
 }

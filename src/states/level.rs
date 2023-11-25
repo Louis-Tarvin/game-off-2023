@@ -9,16 +9,8 @@ use crate::{
     level_manager::LevelManager,
     map::{create_map_on_level_load, Map},
     player::clear_player_history,
-    scale::{scale_rotation, Scale},
-    ui::{
-        equipment::{
-            draw_equimpment_cards, draw_inventory_icons, handle_add_buttons,
-            handle_subtract_buttons, update_inventory_counters,
-        },
-        failure::{check_if_no_valid_moves, setup_failure_help},
-        keys::{setup_keys_ui, update_stamina_costs, update_stamina_values, StaminaCosts},
-        stamina::{setup_stamina_ui, update_stamina_ui},
-    },
+    scale::{scale_rotation, spawn_scale, ScaleCounter},
+    ui::keys::StaminaCosts,
     util::CardinalDirection,
 };
 
@@ -29,41 +21,22 @@ pub struct LevelPlugin;
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(StaminaCosts::default())
+            .insert_resource(ScaleCounter::default())
             .register_type::<LevelManager>()
             .add_systems(
                 OnEnter(GameState::Level),
-                (
-                    create_map_on_level_load,
-                    setup_scene,
-                    setup_stamina_ui,
-                    setup_keys_ui,
-                    setup_failure_help,
-                    draw_equimpment_cards,
-                    draw_inventory_icons,
-                ),
+                (create_map_on_level_load, setup_scene),
             )
             .add_systems(
                 Update,
                 (
                     animate_flag,
-                    update_stamina_ui,
-                    (
-                        update_stamina_costs,
-                        (update_stamina_values, check_if_no_valid_moves),
-                    )
-                        .chain(),
-                    handle_add_buttons,
-                    handle_subtract_buttons,
                     reload_level,
                     skip_level,
                     scale_rotation,
                     camera_rotation,
                 )
                     .run_if(in_state(GameState::Level)),
-            )
-            .add_systems(
-                Update,
-                update_inventory_counters.run_if(resource_changed::<Inventory>()),
             )
             .add_systems(
                 OnEnter(GameState::LevelTransition),
@@ -101,9 +74,9 @@ fn setup_scene(
     // Spawn orthographic camera
     if let Ok((mut camera_transform, mut camera_projection)) = cameras.get_single_mut() {
         *camera_transform =
-            Transform::from_xyz(1.5, 7., 10.0).looking_at(Vec3::new(2.5, 2.0, 0.0), Vec3::Y);
+            Transform::from_xyz(3.5, 8.5, 10.0).looking_at(Vec3::new(4.5, 3.5, 0.0), Vec3::Y);
         *camera_projection = Projection::Orthographic(OrthographicProjection {
-            scaling_mode: ScalingMode::FixedVertical(12.),
+            scaling_mode: ScalingMode::FixedVertical(10.),
             ..Default::default()
         });
     }
@@ -129,8 +102,8 @@ fn setup_scene(
             }),
             mesh: meshes.add(
                 shape::Plane {
-                    size: 20.0,
-                    subdivisions: 16,
+                    size: 25.0,
+                    subdivisions: 18,
                 }
                 .into(),
             ),
@@ -157,18 +130,13 @@ fn setup_scene(
 
     // Spawn scale
     if let Some((scale_x, scale_y)) = map.scale_pos {
-        let height = map.grid_heights[scale_y as usize][scale_x as usize] as f32 + 0.3;
-        let mut transform = Transform::from_xyz(scale_x as f32, height, scale_y as f32);
-        transform.rotate_local_x(-0.2);
-        commands
-            .spawn(SceneBundle {
-                scene: model_assets.scale.clone(),
-                transform,
-                ..Default::default()
-            })
-            .insert(Scale(height))
-            .insert(Name::new("Scale"))
-            .insert(DespawnOnTransition);
+        spawn_scale(
+            commands,
+            scale_x,
+            scale_y,
+            map.grid_heights[scale_y as usize][scale_x as usize],
+            model_assets.scale.clone(),
+        );
     }
 }
 

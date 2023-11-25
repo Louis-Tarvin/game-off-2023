@@ -2,10 +2,10 @@ use bevy::prelude::*;
 
 use crate::{
     player::Player,
-    states::{level::DespawnOnTransition, loading::FontAssets},
+    states::{level::DespawnOnTransition, loading::FontAssets, transition::TransitionManager},
 };
 
-use super::{constants::UI_YELLOW, keys::StaminaCosts};
+use super::{constants::UI_YELLOW, keys::StaminaCosts, UiRoot};
 
 #[derive(Component)]
 pub struct FailureUIRoot;
@@ -25,6 +25,7 @@ pub fn setup_failure_help(mut commands: Commands, font_assets: Res<FontAssets>) 
         })
         .insert(DespawnOnTransition)
         .insert(FailureUIRoot)
+        .insert(UiRoot)
         .insert(Name::new("Failure help UI"))
         .with_children(|parent| {
             parent
@@ -74,6 +75,7 @@ pub fn check_if_no_valid_moves(
     mut root: Query<&mut Visibility, With<FailureUIRoot>>,
     stamina_costs: Res<StaminaCosts>,
     player: Query<&Player>,
+    transition_manager: Res<TransitionManager>,
 ) {
     if let Ok(player) = player.get_single() {
         if let Ok(mut visibility) = root.get_single_mut() {
@@ -93,7 +95,7 @@ pub fn check_if_no_valid_moves(
                 }
             }
 
-            if is_valid_move {
+            if is_valid_move || !matches!(*transition_manager, TransitionManager::Normal) {
                 *visibility = Visibility::Hidden;
             } else {
                 *visibility = Visibility::Visible;

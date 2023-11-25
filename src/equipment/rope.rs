@@ -51,9 +51,9 @@ pub fn handle_rope_input(
 
             // Check if there is a valid placement
             if grid_facing_x < 0
-                && grid_facing_x >= map.grid_heights[0].len() as i16
-                && grid_facing_y < 0
-                && grid_facing_y >= map.grid_heights.len() as i16
+                || grid_facing_x >= map.grid_heights[0].len() as i16
+                || grid_facing_y < 0
+                || grid_facing_y >= map.grid_heights.len() as i16
             {
                 return; // out of bounds
             }

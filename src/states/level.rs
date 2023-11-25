@@ -15,6 +15,8 @@ use crate::{
             draw_equimpment_cards, draw_inventory_icons, handle_add_buttons,
             handle_subtract_buttons, update_inventory_counters,
         },
+        failure::{check_if_no_valid_moves, setup_failure_help},
+        keys::{setup_keys_ui, update_stamina_costs, update_stamina_values, StaminaCosts},
         stamina::{setup_stamina_ui, update_stamina_ui},
     },
     util::CardinalDirection,
@@ -26,13 +28,16 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<LevelManager>()
+        app.insert_resource(StaminaCosts::default())
+            .register_type::<LevelManager>()
             .add_systems(
                 OnEnter(GameState::Level),
                 (
                     create_map_on_level_load,
                     setup_scene,
                     setup_stamina_ui,
+                    setup_keys_ui,
+                    setup_failure_help,
                     draw_equimpment_cards,
                     draw_inventory_icons,
                 ),
@@ -42,6 +47,11 @@ impl Plugin for LevelPlugin {
                 (
                     animate_flag,
                     update_stamina_ui,
+                    (
+                        update_stamina_costs,
+                        (update_stamina_values, check_if_no_valid_moves),
+                    )
+                        .chain(),
                     handle_add_buttons,
                     handle_subtract_buttons,
                     reload_level,
@@ -114,11 +124,8 @@ fn setup_scene(
     commands
         .spawn(MaterialMeshBundle {
             material: cloud_materials.add(CloudMaterial {
-                scale: 2.0,
-                color_a: Color::rgb(0.7, 0.7, 0.7),
+                color_a: Color::rgba(0.7, 0.7, 0.7, 1.0),
                 color_b: Color::WHITE,
-                height_scale: 1.0,
-                time_scale: 0.2,
             }),
             mesh: meshes.add(
                 shape::Plane {

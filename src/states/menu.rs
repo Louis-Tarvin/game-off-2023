@@ -64,7 +64,7 @@ fn setup_menu(
     commands
         .spawn(Camera3dBundle::default())
         .insert(MainCamera::default())
-        .insert(TransitionSettings { progress: 0.0 });
+        .insert(TransitionSettings::default());
     commands
         .spawn(NodeBundle {
             style: Style {

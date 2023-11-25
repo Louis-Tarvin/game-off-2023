@@ -4,11 +4,15 @@ use crate::{
     equipment::Inventory,
     level_manager::LevelManager,
     player::Player,
-    states::{level::DespawnOnTransition, loading::FontAssets},
+    states::{
+        level::DespawnOnTransition,
+        loading::{FontAssets, TextureAssets},
+    },
 };
 
 use super::{
     constants::{DARK_GREY, GREY, UI_YELLOW, UI_YELLOW_HOVER},
+    keys::draw_key,
     UiRoot,
 };
 
@@ -47,7 +51,12 @@ struct EquipmentInfo {
     pub weight: u8,
 }
 
-fn draw_equimpment_card(parent: &mut ChildBuilder, font: Handle<Font>, equipment: EquipmentInfo) {
+fn draw_equimpment_card(
+    parent: &mut ChildBuilder,
+    font: Handle<Font>,
+    equipment: EquipmentInfo,
+    texture: Handle<Image>,
+) {
     parent
         .spawn(NodeBundle {
             style: Style {
@@ -65,7 +74,7 @@ fn draw_equimpment_card(parent: &mut ChildBuilder, font: Handle<Font>, equipment
                 .spawn(NodeBundle {
                     style: Style {
                         height: Val::Px(200.0),
-                        padding: UiRect::all(Val::Px(20.)),
+                        padding: UiRect::all(Val::Px(5.)),
                         margin: UiRect::all(Val::Px(10.)),
                         flex_direction: FlexDirection::Column,
                         justify_content: JustifyContent::SpaceBetween,
@@ -80,10 +89,24 @@ fn draw_equimpment_card(parent: &mut ChildBuilder, font: Handle<Font>, equipment
                         equipment.name,
                         TextStyle {
                             font: font.clone(),
-                            font_size: 30.0,
+                            font_size: 20.0,
                             color: Color::WHITE,
                         },
                     ));
+                    parent.spawn(ImageBundle {
+                        image: UiImage {
+                            texture,
+                            ..Default::default()
+                        },
+                        style: Style {
+                            width: Val::Px(40.0),
+                            height: Val::Px(40.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    });
                     parent.spawn(TextBundle::from_section(
                         format!("weight: {}", equipment.weight),
                         TextStyle {
@@ -200,6 +223,7 @@ pub fn draw_equimpment_cards(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
     level_manager: Res<LevelManager>,
+    texture_assets: Res<TextureAssets>,
 ) {
     commands
         .spawn(NodeBundle {
@@ -216,6 +240,7 @@ pub fn draw_equimpment_cards(
         }).insert(PickingUiRoot)
         .insert(UiRoot)
         .insert(DespawnOnTransition)
+        .insert(Name::new("Equipment Cards UI"))
         .with_children(|parent| {
             let level = level_manager.get_current_level();
             if level.ladder_unlocked {
@@ -228,6 +253,7 @@ pub fn draw_equimpment_cards(
                         description: "Used to climb up two squares using less stamina. Can also be placed horizontally to cross gaps.".to_string(),
                         weight: 2,
                     },
+                    texture_assets.ladder_icon.clone()
                 );
             }
             if level.rope_unlocked {
@@ -240,6 +266,7 @@ pub fn draw_equimpment_cards(
                         description: "Used to descend/ascend cliffs of any height using less stamina.".to_string(),
                         weight: 1,
                     },
+                    texture_assets.rope_icon.clone()
                 );
             }
             if level.rewind_unlocked {
@@ -252,6 +279,7 @@ pub fn draw_equimpment_cards(
                         description: "Once placed you have 5 turns until you are teleported back to it, reclaiming any lost stamina (placed equipment remains)".to_string(),
                         weight: 1,
                     },
+                    texture_assets.rune_icon.clone()
                 );
             }
             if level.potion_unlocked {
@@ -263,7 +291,8 @@ pub fn draw_equimpment_cards(
                         name: "Stamina Potion".to_string(),
                         description: "A flask of green liquid. Gives a small stamina boost".to_string(),
                         weight: 2
-                    }
+                    },
+                    texture_assets.potion_icon.clone()
                 );
             }
         });
@@ -371,6 +400,7 @@ fn draw_inventory_icon(
     font: Handle<Font>,
     equipment: Equipment,
     key: char,
+    texture: Handle<Image>,
 ) {
     parent
         .spawn(NodeBundle {
@@ -385,32 +415,13 @@ fn draw_inventory_icon(
         })
         .with_children(|parent| {
             // Key
-            parent
-                .spawn(NodeBundle {
-                    style: Style {
-                        width: Val::Px(20.0),
-                        height: Val::Px(20.0),
-                        border: UiRect::bottom(Val::Px(2.0)),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        ..Default::default()
-                    },
-                    border_color: DARK_GREY.into(),
-                    background_color: GREY.into(),
-                    ..Default::default()
-                })
-                .with_children(|parent| {
-                    parent.spawn(TextBundle::from_section(
-                        key,
-                        TextStyle {
-                            font: font.clone(),
-                            font_size: 15.0,
-                            color: Color::WHITE,
-                        },
-                    ));
-                });
+            draw_key(parent, font.clone(), key);
             // Icon
-            parent.spawn(NodeBundle {
+            parent.spawn(ImageBundle {
+                image: UiImage {
+                    texture,
+                    ..Default::default()
+                },
                 style: Style {
                     width: Val::Px(40.0),
                     height: Val::Px(40.0),
@@ -418,7 +429,6 @@ fn draw_inventory_icon(
                     align_items: AlignItems::Center,
                     ..Default::default()
                 },
-                background_color: UI_YELLOW.into(),
                 ..Default::default()
             });
             // Count
@@ -456,6 +466,7 @@ pub fn draw_inventory_icons(
     mut commands: Commands,
     font_assets: Res<FontAssets>,
     level_manager: Res<LevelManager>,
+    texture_assets: Res<TextureAssets>,
 ) {
     commands
         .spawn(NodeBundle {
@@ -474,6 +485,7 @@ pub fn draw_inventory_icons(
         .insert(InfoUiRoot)
         .insert(UiRoot)
         .insert(DespawnOnTransition)
+        .insert(Name::new("Inventory icons UI"))
         .with_children(|parent| {
             let level = level_manager.get_current_level();
             if level.ladder_unlocked {
@@ -482,10 +494,17 @@ pub fn draw_inventory_icons(
                     font_assets.fira_sans.clone(),
                     Equipment::Ladder,
                     '1',
+                    texture_assets.ladder_icon.clone(),
                 );
             }
             if level.rope_unlocked {
-                draw_inventory_icon(parent, font_assets.fira_sans.clone(), Equipment::Rope, '2');
+                draw_inventory_icon(
+                    parent,
+                    font_assets.fira_sans.clone(),
+                    Equipment::Rope,
+                    '2',
+                    texture_assets.rope_icon.clone(),
+                );
             }
             if level.rewind_unlocked {
                 draw_inventory_icon(
@@ -493,6 +512,7 @@ pub fn draw_inventory_icons(
                     font_assets.fira_sans.clone(),
                     Equipment::Rewind,
                     '3',
+                    texture_assets.rune_icon.clone(),
                 );
             }
         });

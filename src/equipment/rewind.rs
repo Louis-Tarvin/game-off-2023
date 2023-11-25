@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     level_manager::LevelManager,
     player::{Player, PlayerHistory, PlayerHistoryEvent, PlayerState},
-    states::loading::ModelAssets,
+    states::loading::TextureAssets,
 };
 
 use super::Inventory;
@@ -21,7 +21,9 @@ pub fn handle_rewind_input(
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
     player_query: Query<&Player>,
-    model_assets: Res<ModelAssets>,
+    texture_assets: Res<TextureAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     level_manager: Res<LevelManager>,
     mut player_history: ResMut<PlayerHistory>,
     mut inventory: ResMut<Inventory>,
@@ -36,8 +38,16 @@ pub fn handle_rewind_input(
                 [player.grid_pos_y as usize][player.grid_pos_x as usize];
 
             commands
-                .spawn(SceneBundle {
-                    scene: model_assets.rune.clone(),
+                .spawn(MaterialMeshBundle {
+                    mesh: meshes.add(Mesh::from(shape::Plane {
+                        size: 1.0,
+                        subdivisions: 0,
+                    })),
+                    material: materials.add(StandardMaterial {
+                        base_color_texture: Some(texture_assets.rune_circle.clone()),
+                        alpha_mode: AlphaMode::Blend,
+                        ..Default::default()
+                    }),
                     transform: Transform::from_xyz(
                         player.grid_pos_x as f32,
                         player_height as f32 + 0.01,

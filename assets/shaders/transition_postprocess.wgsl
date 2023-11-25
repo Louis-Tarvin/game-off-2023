@@ -6,10 +6,8 @@ var screen_texture: texture_2d<f32>;
 var texture_sampler: sampler;
 struct TransitionSettings {
     progress: f32,
-#ifdef SIXTEEN_BYTE_ALIGNMENT
     // WebGL2 structs must be 16 byte aligned.
     _webgl2_padding: vec3<f32>
-#endif
 }
 @group(0) @binding(2)
 var<uniform> settings: TransitionSettings;

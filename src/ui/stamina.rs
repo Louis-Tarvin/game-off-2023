@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{player::Player, states::loading::FontAssets};
+use crate::{
+    player::Player,
+    states::{level::DespawnOnTransition, loading::FontAssets},
+};
 
 use super::constants::UI_YELLOW;
 
@@ -16,11 +19,14 @@ pub fn setup_stamina_ui(mut commands: Commands, font_assets: Res<FontAssets>) {
                 top: Val::Px(0.0),
                 width: Val::Px(200.0),
                 height: Val::Px(100.0),
+                justify_content: JustifyContent::Center,
                 ..Default::default()
             },
             background_color: UI_YELLOW.into(),
             ..Default::default()
         })
+        .insert(DespawnOnTransition)
+        .insert(Name::new("Stamina UI"))
         .with_children(|parent| {
             let style = TextStyle {
                 font: font_assets.fira_sans.clone(),

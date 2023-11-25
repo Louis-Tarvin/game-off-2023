@@ -81,15 +81,9 @@ var p2: vec3<f32> = vec3<f32>
 }
 
 @group(1) @binding(0)
-var<uniform> noise_scale: f32;
-@group(1) @binding(1)
 var<uniform> color_a: vec4<f32>;
-@group(1) @binding(2)
+@group(1) @binding(1)
 var<uniform> color_b: vec4<f32>;
-@group(1) @binding(3)
-var<uniform> time_scale: f32;
-@group(1) @binding(4)
-var<uniform> height_scale: f32;
 
 struct Vertex {
     @location(0) position: vec3<f32>,
@@ -102,6 +96,9 @@ fn vertex(vertex: Vertex) -> MeshVertexOutput {
     var vertex = vertex;
     var out: MeshVertexOutput;
     var model = mesh.model;
+    var noise_scale: f32 = 2.0;
+    var time_scale: f32 = 0.2;
+    var height_scale: f32 = 1.0;
 
     let noise = simplex_noise_3d(vec3(vertex.uv * noise_scale, globals.time * time_scale)) * 0.5 + 0.5;
     vertex.position.y += noise * height_scale;
@@ -118,6 +115,9 @@ fn vertex(vertex: Vertex) -> MeshVertexOutput {
 fn fragment(
     mesh: MeshVertexOutput,
 ) -> @location(0) vec4<f32> {
+    var noise_scale: f32 = 2.0;
+    var time_scale: f32 = 0.2;
+
     let f: f32 = simplex_noise_3d(vec3(mesh.uv * noise_scale, globals.time * time_scale));
     var alpha = 1.0;
     if distance(vec2(0.5), mesh.uv) > 0.5 {

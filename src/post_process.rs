@@ -302,6 +302,5 @@ impl FromWorld for PostProcessPipeline {
 pub struct TransitionSettings {
     pub progress: f32,
     // WebGL2 structs must be 16 byte aligned.
-    #[cfg(feature = "webgl2")]
     _webgl2_padding: Vec3,
 }

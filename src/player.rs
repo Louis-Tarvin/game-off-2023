@@ -156,7 +156,7 @@ impl Player {
                             stamina,
                             grid_pos_x: cave_data.second_pos.0,
                             grid_pos_y: cave_data.second_pos.1,
-                            state: PlayerState::Standing(CardinalDirection::South),
+                            state: PlayerState::Standing(direction),
                         });
                     }
                     if matches!(direction, CardinalDirection::North)
@@ -659,6 +659,7 @@ fn player_input(
                         player.state = PlayerState::Standing(CardinalDirection::South);
                         teleported = true;
                         commands.entity(entity).despawn_recursive();
+                        player_history.0.pop();
                         player_history.0.push(PlayerHistoryEvent::Teleport((
                             rune.x,
                             rune.y,

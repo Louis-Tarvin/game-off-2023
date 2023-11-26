@@ -29,8 +29,6 @@ pub struct FontAssets {
 
 #[derive(AssetCollection, Resource)]
 pub struct TextureAssets {
-    #[asset(path = "textures/bevy.png")]
-    pub texture_bevy: Handle<Image>,
     #[asset(path = "textures/rune_circle.png")]
     pub rune_circle: Handle<Image>,
     #[asset(path = "textures/ladder.png")]
@@ -41,6 +39,14 @@ pub struct TextureAssets {
     pub rune_icon: Handle<Image>,
     #[asset(path = "textures/potion.png")]
     pub potion_icon: Handle<Image>,
+    #[asset(path = "textures/1.png")]
+    pub countdown_1: Handle<Image>,
+    #[asset(path = "textures/2.png")]
+    pub countdown_2: Handle<Image>,
+    #[asset(path = "textures/3.png")]
+    pub countdown_3: Handle<Image>,
+    #[asset(path = "textures/4.png")]
+    pub countdown_4: Handle<Image>,
 }
 
 #[derive(AssetCollection, Resource)]

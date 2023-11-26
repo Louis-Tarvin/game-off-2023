@@ -9,7 +9,7 @@ use crate::{
     equipment::Inventory,
     level_manager::LevelManager,
     map::{create_map_on_level_load, Map},
-    player::clear_player_history,
+    player::{clear_player_history, PlayerHistory, PlayerHistoryEvent},
     scale::{rotation, spawn_scale, ScaleCounter},
     ui::keys::StaminaCosts,
     util::CardinalDirection,
@@ -143,7 +143,7 @@ fn setup_scene(
     }
 }
 
-fn animate_flag(
+pub fn animate_flag(
     model_assets: Res<ModelAssets>,
     mut players: Query<&mut AnimationPlayer, Added<AnimationPlayer>>,
 ) {
@@ -181,6 +181,8 @@ fn reload_level(
     mut main_camera: Query<&mut MainCamera>,
     sound_channel: Res<AudioChannel<SoundChannel>>,
     audio_assets: Res<AudioAssets>,
+    mut player_history: ResMut<PlayerHistory>,
+    mut scale_counter: ResMut<ScaleCounter>,
 ) {
     if keyboard_input.just_pressed(KeyCode::R) {
         // remove ladders/ropes etc.
@@ -189,6 +191,12 @@ fn reload_level(
         for mut camera in main_camera.iter_mut() {
             camera.direction = CardinalDirection::North;
             camera.angle_change = 0.0;
+        }
+        // go through the history to see if a scale was picked up. If so, decrement scale count
+        for event in player_history.0.drain(..) {
+            if let PlayerHistoryEvent::PlayerMoveToScale(_) = event {
+                scale_counter.0 -= 1;
+            }
         }
         sound_channel.play(audio_assets.woosh.clone());
         *transition_manager = TransitionManager::TransitioningOutReload(0.0);

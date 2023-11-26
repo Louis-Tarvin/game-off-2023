@@ -6,7 +6,7 @@ use crate::{
     cave::{spawn_gem, HasGem},
     equipment::{
         ladder::{place_horizontal_ladder, place_vertical_ladder},
-        rewind::RewindRune,
+        rewind::{spawn_rune, RewindRune},
         Inventory,
     },
     level_manager::LevelManager,
@@ -251,31 +251,18 @@ pub fn handle_undo_teleport(
                 .expect("There should only be one player");
             let player_height =
                 level_manager.get_current_level().map.grid_heights[*y as usize][*x as usize];
-            commands
-                .spawn(MaterialMeshBundle {
-                    mesh: meshes.add(Mesh::from(shape::Plane {
-                        size: 1.0,
-                        subdivisions: 0,
-                    })),
-                    material: materials.add(StandardMaterial {
-                        base_color_texture: Some(texture_assets.rune_circle.clone()),
-                        alpha_mode: AlphaMode::Blend,
-                        ..Default::default()
-                    }),
-                    transform: Transform::from_xyz(
-                        player.grid_pos_x as f32,
-                        player_height as f32 + 0.01,
-                        player.grid_pos_y as f32,
-                    ),
-                    ..Default::default()
-                })
-                .insert(RewindRune {
-                    x: *x,
-                    y: *y,
-                    countdown: 1,
-                    stamina: player.stamina,
-                    timestamp: *timestamp,
-                });
+            spawn_rune(
+                &mut commands,
+                &texture_assets,
+                *x,
+                *y,
+                player_height as f32 + 0.01,
+                &mut meshes,
+                &mut materials,
+                player.stamina,
+                *timestamp,
+                1,
+            );
         }
     }
 }

@@ -67,11 +67,6 @@ pub fn hide_ui_on_transition(
     transition_manager: Res<TransitionManager>,
 ) {
     match *transition_manager {
-        TransitionManager::Normal => {
-            // for mut visibility in ui_roots.iter_mut() {
-            // *visibility = Visibility::Visible;
-            // }
-        }
         TransitionManager::TransitioningOut(_) | TransitionManager::TransitioningOutReload(_) => {
             for mut visibility in ui_roots.iter_mut() {
                 *visibility = Visibility::Hidden;

@@ -4,7 +4,7 @@ use crate::states::GameState;
 
 use self::{
     ladder::{handle_ladder_input, Ladder},
-    rewind::handle_rewind_input,
+    rewind::{handle_rewind_input, update_countdown_image},
     rope::handle_rope_input,
 };
 
@@ -21,7 +21,12 @@ impl Plugin for EquipmentPlugin {
             .insert_resource(Inventory::default())
             .add_systems(
                 Update,
-                (handle_ladder_input, handle_rope_input, handle_rewind_input)
+                (
+                    handle_ladder_input,
+                    handle_rope_input,
+                    handle_rewind_input,
+                    update_countdown_image,
+                )
                     .run_if(in_state(GameState::Level)),
             );
     }

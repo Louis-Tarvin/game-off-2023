@@ -1,11 +1,8 @@
 [package]
-name = "bevy_game"
+name = "dragonscale-peaks"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-
-# Compile with Performance Optimizations:
-# https://bevyengine.org/learn/book/getting-started/setup/#compile-with-performance-optimizations
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

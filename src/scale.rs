@@ -4,7 +4,7 @@ use bevy_kira_audio::{AudioChannel, AudioControl};
 use crate::{
     audio::{AudioAssets, SoundChannel},
     level_manager::LevelManager,
-    player::{Player, PlayerHistory, PlayerHistoryEvent},
+    player::{Player, PlayerHistory, PlayerHistoryEvent, PlayerState},
     states::level::DespawnOnTransition,
     util::Spin,
 };
@@ -56,7 +56,12 @@ pub fn check_if_at_scale(
             .get_single()
             .expect("There should only be one player");
 
-        if player.grid_pos_x == x && player.grid_pos_y == y {
+        let mut at_scale = player.grid_pos_x == x && player.grid_pos_y == y;
+        if let PlayerState::Climbing(climb_state) = &player.state {
+            at_scale &= map.grid_heights[y as usize][x as usize] == climb_state.elevation - 1;
+        }
+
+        if at_scale {
             for entity in scale_entities.iter() {
                 // should only be a single iteration
                 commands.entity(entity).despawn_recursive();

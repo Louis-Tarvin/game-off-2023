@@ -74,3 +74,12 @@ pub fn camera_rotation(
         }
     }
 }
+
+pub fn camera_spin(mut camera_query: Query<&mut Transform, With<MainCamera>>, time: Res<Time>) {
+    if let Ok(mut camera_transform) = camera_query.get_single_mut() {
+        camera_transform.rotate_around(
+            Vec3::new(3.0, 0.0, 2.5),
+            Quat::from_rotation_y(time.delta_seconds() * -0.05),
+        );
+    }
+}

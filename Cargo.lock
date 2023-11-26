@@ -610,17 +610,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_game"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_asset_loader",
- "bevy_editor_pls",
- "bevy_kira_audio",
- "rand",
-]
-
-[[package]]
 name = "bevy_gizmos"
 version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1549,6 +1538,17 @@ name = "downcast-rs"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
+
+[[package]]
+name = "dragonscale-peaks"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_asset_loader",
+ "bevy_editor_pls",
+ "bevy_kira_audio",
+ "rand",
+]
 
 [[package]]
 name = "duplicate"

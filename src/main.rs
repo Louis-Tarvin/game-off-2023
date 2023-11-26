@@ -6,7 +6,6 @@
 
 use audio::{MusicChannel, SoundChannel, VolumeSettings};
 use bevy::prelude::*;
-use bevy_editor_pls::EditorPlugin;
 use bevy_kira_audio::{AudioApp, AudioPlugin};
 use clouds::CloudMaterial;
 use equipment::EquipmentPlugin;
@@ -14,6 +13,9 @@ use player::PlayerPlugin;
 use post_process::PostProcessPlugin;
 use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
 use ui::UiPlugin;
+
+#[cfg(debug_assertions)]
+use bevy_editor_pls::EditorPlugin;
 
 mod audio;
 mod camera;
@@ -35,7 +37,6 @@ fn main() {
         .add_plugins((
             DefaultPlugins,
             AudioPlugin,
-            EditorPlugin::default(),
             MaterialPlugin::<CloudMaterial>::default(),
             LoadingPlugin,
             MenuPlugin,
@@ -44,6 +45,8 @@ fn main() {
             EquipmentPlugin,
             UiPlugin,
             PostProcessPlugin,
+            #[cfg(debug_assertions)]
+            EditorPlugin::default(),
         ))
         .add_state::<states::GameState>()
         .insert_resource(ClearColor(Color::rgb(0.447, 0.867, 0.969)))

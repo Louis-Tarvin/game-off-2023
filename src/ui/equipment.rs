@@ -305,7 +305,7 @@ pub fn draw_equimpment_cards(
                     EquipmentInfo {
                         variant: Equipment::Ladder,
                         name: "Ladder".to_string(),
-                        description: "Used to climb up two squares using less stamina. Can also be placed horizontally to cross gaps.".to_string(),
+                        description: "Used to climb up two squares using less stamina. Can also be placed horizontally to cross gaps. Can be picked up again and reused.".to_string(),
                         weight: 2,
                     },
                     texture_assets.ladder_icon.clone()
@@ -318,7 +318,7 @@ pub fn draw_equimpment_cards(
                     EquipmentInfo {
                         variant: Equipment::Rope,
                         name: "Rope".to_string(),
-                        description: "Used to descend/ascend cliffs of any height using less stamina.".to_string(),
+                        description: "Used to descend/ascend cliffs of any height using less stamina. Cannot be picked back up once placed.".to_string(),
                         weight: 1,
                     },
                     texture_assets.rope_icon.clone()
@@ -331,7 +331,7 @@ pub fn draw_equimpment_cards(
                     EquipmentInfo {
                         variant: Equipment::Rewind,
                         name: "Rune of Rewind".to_string(),
-                        description: "Once placed you have 5 turns until you are teleported back to it, reclaiming any lost stamina (placed equipment remains)".to_string(),
+                        description: "Once placed you have 5 turns until you are teleported back to the location it was placed, reclaiming any lost stamina (placed equipment remains).".to_string(),
                         weight: 1,
                     },
                     texture_assets.rune_icon.clone()
@@ -344,8 +344,8 @@ pub fn draw_equimpment_cards(
                     EquipmentInfo {
                         variant: Equipment::Potion,
                         name: "Stamina Potion".to_string(),
-                        description: "A flask of green liquid. Gives a small stamina boost".to_string(),
-                        weight: 2
+                        description: "A flask of green liquid. Grants an extra point of stamina.".to_string(),
+                        weight: 1
                     },
                     texture_assets.potion_icon.clone()
                 );
@@ -393,7 +393,7 @@ pub fn handle_add_buttons(
                         Equipment::Rope => inventory.rope_count += 1,
                         Equipment::Potion => {
                             inventory.potion_count += 1;
-                            player.get_single_mut().unwrap().stamina += 2;
+                            player.get_single_mut().unwrap().stamina += 1;
                         }
                         Equipment::Rewind => inventory.rewind_count += 1,
                     }
@@ -436,7 +436,7 @@ pub fn handle_subtract_buttons(
                     if inventory.potion_count > 0 {
                         inventory.potion_count -= 1;
                         inventory.weight -= sub.weight;
-                        player.get_single_mut().unwrap().stamina -= 2;
+                        player.get_single_mut().unwrap().stamina -= 1;
                     }
                 }
                 Equipment::Rewind => {

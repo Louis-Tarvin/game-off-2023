@@ -3,12 +3,13 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::{
+    cave::{spawn_gem, Cave, CaveData, GemCave, HasGem},
     equipment::{
         ladder::{HorizontalLadderKey, VerticalLadderKey},
         rope::RopeKey,
     },
     level_manager::LevelManager,
-    states::level::DespawnOnTransition,
+    states::{level::DespawnOnTransition, loading::ModelAssets},
     util::CardinalDirection,
 };
 
@@ -22,6 +23,7 @@ pub struct Map {
     pub vertical_ladders: HashMap<VerticalLadderKey, Entity>,
     pub horizontal_ladders: HashMap<HorizontalLadderKey, Entity>,
     pub ropes: HashMap<RopeKey, Entity>,
+    pub cave_data: Option<CaveData>,
 }
 impl Map {
     pub fn new(
@@ -30,6 +32,7 @@ impl Map {
         player_pos: (u8, u8),
         flag_pos: (u8, u8),
         scale_pos: Option<(u8, u8)>,
+        cave_data: Option<CaveData>,
     ) -> Self {
         Self {
             grid_heights,
@@ -40,6 +43,7 @@ impl Map {
             vertical_ladders: HashMap::new(),
             horizontal_ladders: HashMap::new(),
             ropes: HashMap::new(),
+            cave_data,
         }
     }
     pub fn is_ladder_or_rope(
@@ -104,7 +108,9 @@ pub fn create_map_on_level_load(
     mut commands: Commands,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
+    model_assets: Res<ModelAssets>,
     level_manager: Res<LevelManager>,
+    mut has_gem: ResMut<HasGem>,
 ) {
     let map = &level_manager.get_current_level().map;
     for y in 0..map.grid_heights.len() {
@@ -134,5 +140,64 @@ pub fn create_map_on_level_load(
                 })
                 .insert(DespawnOnTransition);
         }
+    }
+    if let Some(cave_data) = &map.cave_data {
+        let mut no_gem_visibility = Visibility::Hidden;
+        let mut yes_gem_visibility = Visibility::Hidden;
+        if let Some((x, y)) = cave_data.gem_pos {
+            yes_gem_visibility = Visibility::Visible;
+            has_gem.0 = false;
+            let height = map.grid_heights[y as usize][x as usize] as f32 + 0.3;
+            spawn_gem(&mut commands, x, y, height, model_assets.gem.clone());
+        } else {
+            no_gem_visibility = Visibility::Visible;
+            has_gem.0 = true;
+        }
+
+        let x = cave_data.first_pos.0 as usize;
+        let y = cave_data.first_pos.1 as usize;
+        commands
+            .spawn(SceneBundle {
+                scene: model_assets.cave1.clone(),
+                transform: Transform::from_xyz(x as f32, map.grid_heights[y][x] as f32, y as f32)
+                    .with_rotation(Quat::from_rotation_y(-1.571)),
+                visibility: no_gem_visibility,
+                ..Default::default()
+            })
+            .insert(DespawnOnTransition)
+            .insert(Cave);
+        commands
+            .spawn(SceneBundle {
+                scene: model_assets.cave2.clone(),
+                transform: Transform::from_xyz(x as f32, map.grid_heights[y][x] as f32, y as f32)
+                    .with_rotation(Quat::from_rotation_y(-1.571)),
+                visibility: yes_gem_visibility,
+                ..Default::default()
+            })
+            .insert(GemCave)
+            .insert(DespawnOnTransition);
+
+        let x = cave_data.second_pos.0 as usize;
+        let y = cave_data.second_pos.1 as usize;
+        commands
+            .spawn(SceneBundle {
+                scene: model_assets.cave1.clone(),
+                transform: Transform::from_xyz(x as f32, map.grid_heights[y][x] as f32, y as f32)
+                    .with_rotation(Quat::from_rotation_y(-1.571)),
+                visibility: no_gem_visibility,
+                ..Default::default()
+            })
+            .insert(DespawnOnTransition)
+            .insert(Cave);
+        commands
+            .spawn(SceneBundle {
+                scene: model_assets.cave2.clone(),
+                transform: Transform::from_xyz(x as f32, map.grid_heights[y][x] as f32, y as f32)
+                    .with_rotation(Quat::from_rotation_y(-1.571)),
+                visibility: yes_gem_visibility,
+                ..Default::default()
+            })
+            .insert(GemCave)
+            .insert(DespawnOnTransition);
     }
 }

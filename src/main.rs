@@ -17,6 +17,7 @@ use ui::UiPlugin;
 
 mod audio;
 mod camera;
+mod cave;
 mod clouds;
 mod equipment;
 mod level_manager;
@@ -26,6 +27,7 @@ mod post_process;
 mod scale;
 mod states;
 mod ui;
+mod undo;
 mod util;
 
 fn main() {

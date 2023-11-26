@@ -1,29 +1,26 @@
-use std::collections::hash_map::Entry;
-
 use bevy::prelude::*;
 use bevy_kira_audio::{AudioChannel, AudioControl};
 use rand::Rng;
 
 use crate::{
     audio::{AudioAssets, SoundChannel},
+    cave::{check_if_at_gem, HasGem},
     equipment::{
-        ladder::{
-            place_horizontal_ladder, place_vertical_ladder, HorizontalLadderKey, VerticalLadderKey,
-        },
+        ladder::{HorizontalLadderKey, VerticalLadderKey},
         rewind::RewindRune,
         rope::RopeKey,
-        Inventory,
     },
     level_manager::LevelManager,
     map::Map,
-    scale::{check_if_at_scale, spawn_scale, ScaleCounter},
+    scale::check_if_at_scale,
     states::{
-        level::DespawnOnTransition,
-        loading::{ModelAssets, TextureAssets},
-        transition::TransitionManager,
-        GameState,
+        level::DespawnOnTransition, loading::ModelAssets, transition::TransitionManager, GameState,
     },
     ui::equipment::{InfoUiRoot, PickingUiRoot},
+    undo::{
+        handle_undo_collect_gem, handle_undo_collect_scale, handle_undo_pickup_ladder,
+        handle_undo_place_item, handle_undo_player_move, handle_undo_teleport,
+    },
     util::{Alignment, CardinalDirection},
 };
 
@@ -34,14 +31,24 @@ impl Plugin for PlayerPlugin {
         app.register_type::<Player>()
             .register_type::<PlayerHistory>()
             .insert_resource(PlayerHistory::default())
+            .add_event::<PlayerHistoryEvent>()
             .add_systems(OnEnter(GameState::Level), spawn_player)
             .add_systems(
                 Update,
                 (
                     player_input,
-                    update_player_position,
-                    check_if_at_flag,
-                    check_if_at_scale,
+                    (
+                        update_player_position,
+                        check_if_at_flag,
+                        check_if_at_scale,
+                        check_if_at_gem,
+                        handle_undo_player_move,
+                        handle_undo_teleport,
+                        handle_undo_place_item,
+                        handle_undo_pickup_ladder,
+                        handle_undo_collect_gem,
+                        handle_undo_collect_scale,
+                    ),
                 )
                     .chain()
                     .run_if(in_state(GameState::Level)),
@@ -82,7 +89,12 @@ pub struct Player {
     pub state: PlayerState,
 }
 impl Player {
-    pub fn go(&self, direction: CardinalDirection, map: &Map) -> Option<Self> {
+    pub fn go(
+        &self,
+        direction: CardinalDirection,
+        map: &Map,
+        can_enter_cave: bool,
+    ) -> Option<Self> {
         let heights = &map.grid_heights;
         let x = self.grid_pos_x as usize;
         let y = self.grid_pos_y as usize;
@@ -130,6 +142,39 @@ impl Player {
         let current_elevation = heights[y][x];
         match &self.state {
             PlayerState::Standing(_) => {
+                // first, check if we're moving north into a cave
+                if let Some(cave_data) = &map.cave_data {
+                    if matches!(direction, CardinalDirection::North)
+                        && cave_data.first_pos.0 == self.grid_pos_x
+                        && cave_data.first_pos.1 == self.grid_pos_y
+                    {
+                        if !can_enter_cave {
+                            return None;
+                        }
+                        // moving into the first cave -> teleport to second cave
+                        return self.stamina.checked_sub(MOVE_STAMINA).map(|stamina| Self {
+                            stamina,
+                            grid_pos_x: cave_data.second_pos.0,
+                            grid_pos_y: cave_data.second_pos.1,
+                            state: PlayerState::Standing(CardinalDirection::South),
+                        });
+                    }
+                    if matches!(direction, CardinalDirection::North)
+                        && cave_data.second_pos.0 == self.grid_pos_x
+                        && cave_data.second_pos.1 == self.grid_pos_y
+                    {
+                        if !can_enter_cave {
+                            return None;
+                        }
+                        // moving into the second cave -> teleport to first cave
+                        return self.stamina.checked_sub(MOVE_STAMINA).map(|stamina| Self {
+                            stamina,
+                            grid_pos_x: cave_data.first_pos.0,
+                            grid_pos_y: cave_data.first_pos.1,
+                            state: PlayerState::Standing(CardinalDirection::South),
+                        });
+                    }
+                }
                 let (new_x, new_y) = match direction {
                     CardinalDirection::North => (x, y - 1),
                     CardinalDirection::East => (x + 1, y),
@@ -535,10 +580,11 @@ fn update_player_position(
     }
 }
 
-#[derive(Debug, Reflect)]
+#[derive(Debug, Reflect, Event)]
 pub enum PlayerHistoryEvent {
     PlayerMove(Player),
     PlayerMoveToScale(Player),
+    PlayerMoveToGem(Player),
     PlaceVerticalLadder(VerticalLadderKey),
     PlaceHorizontalLadder(HorizontalLadderKey),
     PlaceRope(RopeKey),
@@ -558,16 +604,12 @@ fn player_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut player: Query<&mut Player>,
     mut player_history: ResMut<PlayerHistory>,
-    mut level_manager: ResMut<LevelManager>,
+    mut undo_event_writer: EventWriter<PlayerHistoryEvent>,
+    level_manager: Res<LevelManager>,
     mut picking_ui: Query<&mut Visibility, With<PickingUiRoot>>,
     mut info_ui: Query<&mut Visibility, (With<InfoUiRoot>, Without<PickingUiRoot>)>,
-    mut inventory: ResMut<Inventory>,
-    model_assets: Res<ModelAssets>,
-    texture_assets: Res<TextureAssets>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     mut rewind_runes: Query<(Entity, &mut RewindRune)>,
-    mut scale_counter: ResMut<ScaleCounter>,
+    has_gem: Res<HasGem>,
     sound_channel: Res<AudioChannel<SoundChannel>>,
     audio_assets: Res<AudioAssets>,
 ) {
@@ -585,187 +627,7 @@ fn player_input(
     {
         // undo the last move
         if let Some(event) = player_history.0.pop() {
-            match event {
-                PlayerHistoryEvent::PlayerMove(old_player) => {
-                    let mut player = player
-                        .get_single_mut()
-                        .expect("There should only be one player");
-                    *player = old_player;
-
-                    // undo rune countdowns
-                    for (_, mut rune) in rewind_runes.iter_mut() {
-                        rune.countdown += 1;
-                    }
-                }
-                PlayerHistoryEvent::PlayerMoveToScale(old_player) => {
-                    let mut player = player
-                        .get_single_mut()
-                        .expect("There should only be one player");
-                    *player = old_player;
-
-                    // undo rune countdowns
-                    for (_, mut rune) in rewind_runes.iter_mut() {
-                        rune.countdown += 1;
-                    }
-
-                    // Spawn scale
-                    let map = &level_manager.get_current_level().map;
-                    if let Some((scale_x, scale_y)) = map.scale_pos {
-                        spawn_scale(
-                            commands,
-                            scale_x,
-                            scale_y,
-                            map.grid_heights[scale_y as usize][scale_x as usize],
-                            model_assets.scale.clone(),
-                        );
-                    }
-                    // decrement scale counter
-                    if scale_counter.0 > 0 {
-                        scale_counter.0 -= 1;
-                    } else {
-                        warn!("Un-did scale pickup, but the scale counter was zero!");
-                    }
-                }
-                PlayerHistoryEvent::PlaceVerticalLadder(key) => {
-                    if let Some(entity) = level_manager
-                        .get_current_map_mut()
-                        .vertical_ladders
-                        .remove(&key)
-                    {
-                        commands.entity(entity).despawn_recursive();
-                        inventory.ladder_count += 1;
-                    } else {
-                        warn!("Tried to undo vertical ladder placement, but it didn't exist!");
-                    }
-                }
-                PlayerHistoryEvent::PlaceHorizontalLadder(key) => {
-                    if let Some(entity) = level_manager
-                        .get_current_map_mut()
-                        .horizontal_ladders
-                        .remove(&key)
-                    {
-                        commands.entity(entity).despawn_recursive();
-                        inventory.ladder_count += 1;
-                    } else {
-                        warn!("Tried to undo horizontal ladder placement, but it didn't exist!");
-                    }
-                }
-                PlayerHistoryEvent::PlaceRope(key) => {
-                    if let Some(entity) = level_manager.get_current_map_mut().ropes.remove(&key) {
-                        commands.entity(entity).despawn_recursive();
-                        inventory.rope_count += 1;
-                    } else {
-                        warn!("Tried to undo rope placement, but it didn't exist!");
-                    }
-                }
-                PlayerHistoryEvent::PickUpVerticalLadder(key) => {
-                    match level_manager
-                        .get_current_map_mut()
-                        .vertical_ladders
-                        .entry(key)
-                    {
-                        Entry::Occupied(_) => {
-                            warn!("Tried to undo ladder pickup, but a ladder was already there!")
-                        }
-                        Entry::Vacant(v) => {
-                            let key = v.key();
-                            let player = player
-                                .get_single()
-                                .expect("There should only be one player");
-                            place_vertical_ladder(
-                                commands,
-                                model_assets.ladder.clone(),
-                                key.direction,
-                                player.grid_pos_x as f32,
-                                player.grid_pos_y as f32,
-                                key.height as f32,
-                                v,
-                            );
-                            inventory.ladder_count -= 1;
-                        }
-                    }
-                }
-                PlayerHistoryEvent::PickUpHorizontalLadder(key) => {
-                    match level_manager
-                        .get_current_map_mut()
-                        .horizontal_ladders
-                        .entry(key)
-                    {
-                        Entry::Occupied(_) => {
-                            warn!("Tried to undo ladder pickup, but a ladder was already there!")
-                        }
-                        Entry::Vacant(v) => {
-                            let key = v.key();
-                            let player = player
-                                .get_single()
-                                .expect("There should only be one player");
-                            let direction = match key.alignment {
-                                Alignment::Xaxis => CardinalDirection::East,
-                                Alignment::Yaxis => CardinalDirection::North,
-                            };
-                            place_horizontal_ladder(
-                                commands,
-                                model_assets.ladder.clone(),
-                                direction,
-                                player.grid_pos_x as f32,
-                                player.grid_pos_y as f32,
-                                key.height as f32,
-                                v,
-                            );
-                            inventory.ladder_count -= 1;
-                        }
-                    }
-                }
-                PlayerHistoryEvent::PlaceRune => {
-                    // find the most recently placed rune and delete it
-                    let mut most_recent = None;
-                    let mut most_recent_timestamp = 0.0;
-                    for (entity, rune) in rewind_runes.iter() {
-                        if rune.timestamp > most_recent_timestamp {
-                            most_recent = Some(entity);
-                            most_recent_timestamp = rune.timestamp;
-                        }
-                    }
-                    if let Some(entity) = most_recent {
-                        commands.entity(entity).despawn_recursive();
-                        inventory.rewind_count += 1;
-                    } else {
-                        warn!("Tried to undo rune placement, but no runes exist!");
-                    }
-                }
-                PlayerHistoryEvent::Teleport((x, y, timestamp)) => {
-                    let player = player
-                        .get_single()
-                        .expect("There should only be one player");
-                    let player_height =
-                        level_manager.get_current_level().map.grid_heights[y as usize][x as usize];
-                    commands
-                        .spawn(MaterialMeshBundle {
-                            mesh: meshes.add(Mesh::from(shape::Plane {
-                                size: 1.0,
-                                subdivisions: 0,
-                            })),
-                            material: materials.add(StandardMaterial {
-                                base_color_texture: Some(texture_assets.rune_circle.clone()),
-                                alpha_mode: AlphaMode::Blend,
-                                ..Default::default()
-                            }),
-                            transform: Transform::from_xyz(
-                                player.grid_pos_x as f32,
-                                player_height as f32 + 0.01,
-                                player.grid_pos_y as f32,
-                            ),
-                            ..Default::default()
-                        })
-                        .insert(RewindRune {
-                            x,
-                            y,
-                            countdown: 1,
-                            stamina: player.stamina,
-                            timestamp,
-                        });
-                }
-            }
+            undo_event_writer.send(event);
         } else {
             // swap UI
             *picking_ui.get_single_mut().unwrap() = Visibility::Visible;
@@ -778,7 +640,7 @@ fn player_input(
         let mut player = player
             .get_single_mut()
             .expect("There should only be one player");
-        let new_player = player.go(direction, &level_manager.get_current_level().map);
+        let new_player = player.go(direction, &level_manager.get_current_level().map, has_gem.0);
         if let Some(new_player) = new_player {
             let mut teleported = false;
             if !player.has_direction_changed(&new_player) {

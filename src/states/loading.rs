@@ -59,4 +59,10 @@ pub struct ModelAssets {
     pub rope: Handle<Scene>,
     #[asset(path = "models/scale.glb#Scene0")]
     pub scale: Handle<Scene>,
+    #[asset(path = "models/cave.glb#Scene0")]
+    pub cave1: Handle<Scene>,
+    #[asset(path = "models/cave.glb#Scene1")]
+    pub cave2: Handle<Scene>,
+    #[asset(path = "models/gem.glb#Scene0")]
+    pub gem: Handle<Scene>,
 }

@@ -1,4 +1,7 @@
-use bevy::{prelude::Vec3, reflect::Reflect};
+use bevy::{
+    prelude::{Component, Vec3},
+    reflect::Reflect,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub enum CardinalDirection {
@@ -57,3 +60,6 @@ pub fn cubic_ease_in_out(t: f32) -> f32 {
     let t = t - 2.0;
     0.5 * (t * t * t + 2.0)
 }
+
+#[derive(Component)]
+pub struct Spin(pub f32);

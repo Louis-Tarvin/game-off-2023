@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{map::Map, states::level::Level};
+use crate::{cave::CaveData, map::Map, states::level::Level};
 
 #[derive(Debug, Default, Resource, Reflect)]
 #[reflect(Resource)]
@@ -21,6 +21,35 @@ pub fn init_level_manager(mut commands: Commands) {
     commands.insert_resource(LevelManager {
         current: 0,
         levels: vec![
+            // Introducing cave
+            Level {
+                map: Map::new(
+                    vec![
+                        vec![2, 2, 5, 7, 7, 5],
+                        vec![4, 4, 4, 5, 5, 3],
+                        vec![2, 3, 1, 1, 4, 2],
+                    ],
+                    vec![
+                        vec![true, true, true, true, true, true],
+                        vec![true, true, true, true, true, true],
+                        vec![true, true, true, true, true, true],
+                    ],
+                    (0, 2),
+                    (4, 0),
+                    Some((4, 2)),
+                    Some(CaveData {
+                        first_pos: (3, 2),
+                        second_pos: (4, 1),
+                        gem_pos: Some((0, 1)),
+                    }),
+                ),
+                stamina_budget: 15,
+                weight_budget: 4,
+                ladder_unlocked: true,
+                rope_unlocked: true,
+                potion_unlocked: true,
+                rewind_unlocked: true,
+            },
             // Introducing rewind rune
             Level {
                 map: Map::new(
@@ -37,6 +66,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (1, 2),
                     (5, 0),
                     Some((2, 2)),
+                    None,
                 ),
                 stamina_budget: 8,
                 weight_budget: 3,
@@ -60,6 +90,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (3, 2),
                     (4, 0),
                     Some((1, 0)),
+                    None,
                 ),
                 stamina_budget: 10,
                 weight_budget: 4,
@@ -79,6 +110,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     ],
                     (1, 3),
                     (2, 0),
+                    None,
                     None,
                 ),
                 stamina_budget: 16,
@@ -108,6 +140,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (0, 4),
                     (4, 1),
                     None,
+                    None,
                 ),
                 stamina_budget: 27,
                 weight_budget: 0,
@@ -132,6 +165,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (0, 2),
                     (4, 0),
                     Some((5, 0)),
+                    None,
                 ),
                 stamina_budget: 14,
                 weight_budget: 4,
@@ -154,6 +188,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     ],
                     (0, 2),
                     (5, 1),
+                    None,
                     None,
                 ),
                 stamina_budget: 11,
@@ -178,6 +213,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (0, 2),
                     (5, 1),
                     None,
+                    None,
                 ),
                 stamina_budget: 8,
                 weight_budget: 4,
@@ -201,6 +237,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     ],
                     (0, 0),
                     (5, 2),
+                    None,
                     None,
                 ),
                 stamina_budget: 9,
@@ -228,6 +265,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (0, 0),
                     (5, 0),
                     Some((2, 3)),
+                    None,
                 ),
                 stamina_budget: 15,
                 weight_budget: 5,
@@ -254,6 +292,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     (1, 3),
                     (2, 0),
                     Some((0, 0)),
+                    None,
                 ),
                 stamina_budget: 19,
                 weight_budget: 3,
@@ -276,6 +315,7 @@ pub fn init_level_manager(mut commands: Commands) {
                     ],
                     (0, 2),
                     (5, 0),
+                    None,
                     None,
                 ),
                 stamina_budget: 30,

@@ -4,12 +4,13 @@ use bevy_kira_audio::{AudioChannel, AudioControl};
 use crate::{
     audio::{AudioAssets, SoundChannel},
     camera::{camera_rotation, MainCamera},
+    cave::{swap_cave_visibility, HasGem},
     clouds::CloudMaterial,
     equipment::Inventory,
     level_manager::LevelManager,
     map::{create_map_on_level_load, Map},
     player::clear_player_history,
-    scale::{scale_rotation, spawn_scale, ScaleCounter},
+    scale::{rotation, spawn_scale, ScaleCounter},
     ui::keys::StaminaCosts,
     util::CardinalDirection,
 };
@@ -22,6 +23,7 @@ impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(StaminaCosts::default())
             .insert_resource(ScaleCounter::default())
+            .insert_resource(HasGem::default())
             .register_type::<LevelManager>()
             .add_systems(
                 OnEnter(GameState::Level),
@@ -33,8 +35,9 @@ impl Plugin for LevelPlugin {
                     animate_flag,
                     reload_level,
                     skip_level,
-                    scale_rotation,
+                    rotation,
                     camera_rotation,
+                    swap_cave_visibility.run_if(resource_changed::<HasGem>()),
                 )
                     .run_if(in_state(GameState::Level)),
             )
@@ -131,7 +134,7 @@ fn setup_scene(
     // Spawn scale
     if let Some((scale_x, scale_y)) = map.scale_pos {
         spawn_scale(
-            commands,
+            &mut commands,
             scale_x,
             scale_y,
             map.grid_heights[scale_y as usize][scale_x as usize],

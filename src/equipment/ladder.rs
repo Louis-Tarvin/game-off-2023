@@ -77,7 +77,7 @@ fn is_valid_horizontal_ladder_placement(
 }
 
 pub fn place_vertical_ladder(
-    mut commands: Commands,
+    commands: &mut Commands,
     ladder_scn: Handle<Scene>,
     direction: CardinalDirection,
     x: f32,
@@ -113,7 +113,7 @@ pub fn place_vertical_ladder(
 }
 
 pub fn place_horizontal_ladder(
-    mut commands: Commands,
+    commands: &mut Commands,
     ladder_scn: Handle<Scene>,
     direction: CardinalDirection,
     x: f32,
@@ -210,7 +210,7 @@ pub fn handle_ladder_input(
                     if inventory.ladder_count > 0 {
                         inventory.ladder_count -= 1;
                         place_vertical_ladder(
-                            commands,
+                            &mut commands,
                             model_assets.ladder.clone(),
                             player_direction,
                             player.grid_pos_x as f32,
@@ -260,7 +260,7 @@ pub fn handle_ladder_input(
                         if inventory.ladder_count > 0 {
                             inventory.ladder_count -= 1;
                             place_horizontal_ladder(
-                                commands,
+                                &mut commands,
                                 model_assets.ladder.clone(),
                                 player_direction,
                                 player.grid_pos_x as f32,

@@ -20,7 +20,6 @@ pub fn setup_failure_help(mut commands: Commands, font_assets: Res<FontAssets>) 
                 align_items: AlignItems::Center,
                 ..Default::default()
             },
-            // visibility: Visibility::Hidden,
             ..Default::default()
         })
         .insert(DespawnOnTransition)

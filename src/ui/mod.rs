@@ -10,6 +10,7 @@ use crate::{
 };
 
 use self::{
+    end::setup_end_screen,
     equipment::{
         draw_equimpment_cards, draw_inventory_icons, handle_add_buttons, handle_subtract_buttons,
         update_inventory_counters, update_weight_text,
@@ -21,6 +22,7 @@ use self::{
 };
 
 pub mod constants;
+pub mod end;
 pub mod equipment;
 pub mod failure;
 pub mod keys;
@@ -59,8 +61,8 @@ impl Plugin for UiPlugin {
             (
                 update_stamina_ui,
                 (
-                    update_stamina_values,
-                    (update_stamina_costs, check_if_no_valid_moves),
+                    update_stamina_costs,
+                    (update_stamina_values, check_if_no_valid_moves),
                 )
                     .chain(),
                 handle_add_buttons,
@@ -70,6 +72,7 @@ impl Plugin for UiPlugin {
                 update_scale_count_ui.run_if(resource_changed::<ScaleCounter>()),
             )
                 .run_if(in_state(GameState::Level)),
-        );
+        )
+        .add_systems(OnEnter(GameState::End), setup_end_screen);
     }
 }

@@ -165,13 +165,17 @@ fn level_transition(
         commands.entity(entity).despawn_recursive();
     }
     commands.insert_resource(Inventory::default());
-    if matches!(current_state.get(), GameState::LevelTransition)
-        && level_manager.current + 1 < level_manager.levels.len()
-    {
-        level_manager.current += 1;
-    }
     level_manager.get_current_map_mut().reset();
-    next_state.set(GameState::Level);
+    if matches!(current_state.get(), GameState::LevelTransition) {
+        if level_manager.current + 1 < level_manager.levels.len() {
+            level_manager.current += 1;
+            next_state.set(GameState::Level);
+        } else {
+            next_state.set(GameState::End);
+        }
+    } else {
+        next_state.set(GameState::Level);
+    }
 }
 
 fn reload_level(

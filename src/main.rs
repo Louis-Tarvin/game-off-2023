@@ -12,7 +12,7 @@ use equipment::EquipmentPlugin;
 use player::PlayerPlugin;
 use post_process::PostProcessPlugin;
 use states::{level::LevelPlugin, loading::LoadingPlugin, menu::MenuPlugin};
-use ui::UiPlugin;
+use ui::{constants::SKY_BLUE, UiPlugin};
 
 #[cfg(debug_assertions)]
 use bevy_editor_pls::EditorPlugin;
@@ -49,7 +49,7 @@ fn main() {
             EditorPlugin::default(),
         ))
         .add_state::<states::GameState>()
-        .insert_resource(ClearColor(Color::rgb(0.447, 0.867, 0.969)))
+        .insert_resource(ClearColor(SKY_BLUE))
         .insert_resource(AmbientLight {
             brightness: 1.0,
             ..Default::default()

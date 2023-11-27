@@ -13,4 +13,5 @@ pub enum GameState {
     Level,
     LevelTransition,
     LevelReload,
+    End,
 }

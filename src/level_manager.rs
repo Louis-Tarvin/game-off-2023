@@ -188,9 +188,9 @@ pub fn init_level_manager(mut commands: Commands) {
                         vec![1, 1, 2, 2, 2, 1],
                     ],
                     vec![
-                        vec![true, true, true, true, true, true],
+                        vec![true, true, false, false, true, true],
                         vec![true, true, false, false, false, true],
-                        vec![true, true, false, false, false, true],
+                        vec![true, true, true, true, false, true],
                         vec![true, true, true, true, true, true],
                     ],
                     (3, 3),
@@ -239,8 +239,8 @@ pub fn init_level_manager(mut commands: Commands) {
             Level {
                 map: Map::new(
                     vec![
-                        vec![4, 2, 4, 5, 6, 5],
-                        vec![2, 2, 3, 2, 4, 4],
+                        vec![4, 1, 4, 5, 6, 5],
+                        vec![2, 1, 3, 2, 4, 4],
                         vec![4, 2, 2, 2, 3, 2],
                         vec![2, 2, 1, 1, 1, 1],
                     ],
@@ -270,8 +270,8 @@ pub fn init_level_manager(mut commands: Commands) {
             Level {
                 map: Map::new(
                     vec![
-                        vec![5, 5, 5, 6, 7, 6, 5],
-                        vec![4, 4, 4, 4, 4, 4, 3],
+                        vec![4, 5, 5, 6, 7, 6, 5],
+                        vec![3, 4, 4, 4, 4, 4, 3],
                         vec![2, 2, 1, 2, 3, 2, 1],
                     ],
                     vec![

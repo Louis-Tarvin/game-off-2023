@@ -77,7 +77,7 @@ fn setup_menu(
                 height: Val::Percent(100.0),
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
+                align_items: AlignItems::Start,
                 ..Default::default()
             },
             ..Default::default()
@@ -198,7 +198,7 @@ fn add_button(parent: &mut ChildBuilder, text: &str, button: MenuButton, font: H
         width: Val::Px(220.0),
         height: Val::Px(60.0),
         // center button
-        margin: UiRect::all(Val::Px(20.0)),
+        margin: UiRect::all(Val::Px(30.0)),
         // horizontally center child text
         justify_content: JustifyContent::Center,
         // vertically center child text

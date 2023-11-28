@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::camera::ScalingMode};
+use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*, render::camera::ScalingMode};
 use bevy_kira_audio::{AudioChannel, AudioControl};
 
 use crate::{
@@ -6,7 +6,7 @@ use crate::{
     camera::{camera_rotation, MainCamera},
     cave::{swap_cave_visibility, HasGem},
     clouds::CloudMaterial,
-    equipment::Inventory,
+    equipment::{rewind::RewindRune, Inventory},
     level_manager::LevelManager,
     map::{create_map_on_level_load, Map},
     player::{clear_player_history, PlayerHistory, PlayerHistoryEvent},
@@ -70,18 +70,21 @@ fn setup_scene(
     mut commands: Commands,
     mut cloud_materials: ResMut<Assets<CloudMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut cameras: Query<(&mut Transform, &mut Projection), With<MainCamera>>,
+    mut cameras: Query<(&mut Transform, &mut Projection, &mut MainCamera)>,
     model_assets: Res<ModelAssets>,
     level_manager: Res<LevelManager>,
 ) {
     // Spawn orthographic camera
-    if let Ok((mut camera_transform, mut camera_projection)) = cameras.get_single_mut() {
+    if let Ok((mut camera_transform, mut camera_projection, mut camera)) = cameras.get_single_mut()
+    {
         *camera_transform =
             Transform::from_xyz(3.5, 8.5, 10.0).looking_at(Vec3::new(4.5, 3.5, 0.0), Vec3::Y);
         *camera_projection = Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical(10.),
             ..Default::default()
         });
+        camera.direction = CardinalDirection::North;
+        camera.angle_change = 0.0;
     }
 
     // Spawn main light source
@@ -92,6 +95,11 @@ fn setup_scene(
                 ..Default::default()
             },
             transform: Transform::from_xyz(10.0, 20.0, 5.0).looking_at(Vec3::default(), Vec3::Y),
+            cascade_shadow_config: CascadeShadowConfigBuilder {
+                first_cascade_far_bound: 20.0,
+                ..Default::default()
+            }
+            .into(),
             ..Default::default()
         })
         .insert(DespawnOnTransition);
@@ -179,22 +187,22 @@ fn level_transition(
 }
 
 fn reload_level(
+    mut commands: Commands,
     mut transition_manager: ResMut<TransitionManager>,
     keyboard_input: Res<Input<KeyCode>>,
     mut level_manager: ResMut<LevelManager>,
-    mut main_camera: Query<&mut MainCamera>,
     sound_channel: Res<AudioChannel<SoundChannel>>,
     audio_assets: Res<AudioAssets>,
     mut player_history: ResMut<PlayerHistory>,
     mut scale_counter: ResMut<ScaleCounter>,
+    rewind_runes: Query<Entity, With<RewindRune>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::R) {
         // remove ladders/ropes etc.
         level_manager.get_current_map_mut().reset();
-        // reset camera rotation
-        for mut camera in main_camera.iter_mut() {
-            camera.direction = CardinalDirection::North;
-            camera.angle_change = 0.0;
+        // remove rewind runes
+        for entity in rewind_runes.iter() {
+            commands.entity(entity).despawn_recursive();
         }
         // go through the history to see if a scale was picked up. If so, decrement scale count
         for event in player_history.0.drain(..) {

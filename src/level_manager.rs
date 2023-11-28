@@ -189,8 +189,8 @@ pub fn init_level_manager(mut commands: Commands) {
                     ],
                     vec![
                         vec![true, true, true, true, true, true],
-                        vec![true, true, true, true, true, true],
-                        vec![true, true, true, true, true, true],
+                        vec![true, true, false, false, false, true],
+                        vec![true, true, false, false, false, true],
                         vec![true, true, true, true, true, true],
                     ],
                     (3, 3),

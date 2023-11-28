@@ -17,7 +17,9 @@ impl Plugin for LoadingPlugin {
         .add_collection_to_loading_state::<_, AudioAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, TextureAssets>(GameState::Loading)
         .add_collection_to_loading_state::<_, ModelAssets>(GameState::Loading)
-        .insert_resource(TransitionManager::Normal);
+        .insert_resource(TransitionManager::Normal)
+        .add_systems(OnEnter(GameState::Loading), setup_loading_screen)
+        .add_systems(OnExit(GameState::Loading), cleanup);
     }
 }
 
@@ -71,4 +73,40 @@ pub struct ModelAssets {
     pub cave2: Handle<Scene>,
     #[asset(path = "models/gem.glb#Scene0")]
     pub gem: Handle<Scene>,
+}
+
+#[derive(Component)]
+pub struct LoadingUiRoot;
+
+fn setup_loading_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                margin: UiRect::all(Val::Auto),
+                padding: UiRect::all(Val::Px(20.)),
+                width: Val::Px(550.0),
+                height: Val::Px(190.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::ColumnReverse,
+                ..Default::default()
+            },
+            background_color: Color::BLACK.into(),
+            ..Default::default()
+        })
+        .insert(LoadingUiRoot)
+        .with_children(|parent| {
+            parent.spawn(TextBundle::from_section(
+                "Loading...",
+                TextStyle {
+                    font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                    font_size: 40.0,
+                    color: Color::WHITE,
+                },
+            ));
+        });
+}
+
+fn cleanup(mut commands: Commands, root: Query<Entity, With<LoadingUiRoot>>) {
+    commands.entity(root.single()).despawn_recursive();
 }

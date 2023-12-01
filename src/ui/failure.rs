@@ -93,6 +93,9 @@ pub fn check_if_no_valid_moves(
                     is_valid_move = val as u16 <= player.stamina;
                 }
             }
+            if player.stamina >= 4 {
+                is_valid_move = true;
+            }
 
             if is_valid_move || !matches!(*transition_manager, TransitionManager::Normal) {
                 *visibility = Visibility::Hidden;

@@ -223,6 +223,8 @@ pub fn handle_ladder_input(
                             .push(PlayerHistoryEvent::PlaceVerticalLadder(key));
 
                         sound_channel.play(audio_assets.pop.clone());
+                    } else {
+                        sound_channel.play(audio_assets.error.clone());
                     }
                 }
             }
@@ -273,9 +275,13 @@ pub fn handle_ladder_input(
                                 .push(PlayerHistoryEvent::PlaceHorizontalLadder(key));
 
                             sound_channel.play(audio_assets.pop.clone());
+                        } else {
+                            sound_channel.play(audio_assets.error.clone());
                         }
                     }
                 }
+            } else {
+                sound_channel.play(audio_assets.error.clone());
             }
         }
     }

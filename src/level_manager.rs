@@ -50,26 +50,51 @@ pub fn init_level_manager(mut commands: Commands) {
                 potion_unlocked: false,
                 rewind_unlocked: false,
             },
-            // Introducing ladders
+            // Introducing vertical ladders
+            Level {
+                map: Map::new(
+                    vec![
+                        vec![4, 5, 5, 4, 5, 6],
+                        vec![3, 3, 3, 3, 3, 3],
+                        vec![1, 1, 1, 1, 1, 1],
+                    ],
+                    vec![
+                        vec![false, false, false, false, false, false],
+                        vec![true, true, true, true, true, true],
+                        vec![false, false, false, false, false, false],
+                    ],
+                    (0, 2),
+                    (4, 0),
+                    Some((2, 1)),
+                    None,
+                ),
+                stamina_budget: 8,
+                weight_budget: 4,
+                ladder_unlocked: true,
+                rope_unlocked: false,
+                potion_unlocked: false,
+                rewind_unlocked: false,
+            },
+            // Introducing horizontal ladders
             Level {
                 map: Map::new(
                     vec![
                         vec![4, 5, 6, 6, 5, 5],
-                        vec![3, 3, 2, 3, 3, 3],
-                        vec![1, 1, 1, 2, 2, 1],
+                        vec![3, 3, 1, 3, 3, 3],
+                        vec![1, 1, 1, 1, 1, 1],
                     ],
                     vec![
                         vec![false, false, false, false, true, true],
                         vec![false, false, false, false, false, false],
                         vec![false, false, false, false, false, false],
                     ],
-                    (0, 2),
+                    (0, 1),
                     (4, 0),
                     Some((5, 0)),
                     None,
                 ),
-                stamina_budget: 14,
-                weight_budget: 4,
+                stamina_budget: 13,
+                weight_budget: 2,
                 ladder_unlocked: true,
                 rope_unlocked: false,
                 potion_unlocked: false,
@@ -78,8 +103,8 @@ pub fn init_level_manager(mut commands: Commands) {
             Level {
                 map: Map::new(
                     vec![
-                        vec![4, 6, 4, 6, 7, 7],
-                        vec![4, 5, 6, 6, 5, 5],
+                        vec![7, 7, 7, 7, 7, 8],
+                        vec![6, 6, 6, 6, 7, 5],
                         vec![3, 1, 1, 3, 3, 3],
                     ],
                     vec![
@@ -213,6 +238,36 @@ pub fn init_level_manager(mut commands: Commands) {
             Level {
                 map: Map::new(
                     vec![
+                        vec![5, 7, 6, 5, 4],
+                        vec![3, 5, 5, 4, 3],
+                        vec![1, 3, 1, 3, 1],
+                        vec![1, 1, 1, 1, 1],
+                    ],
+                    vec![
+                        vec![false, false, false, false, false],
+                        vec![false, false, false, false, false],
+                        vec![false, false, false, false, false],
+                        vec![false, false, false, false, false],
+                    ],
+                    (1, 3),
+                    (1, 1),
+                    None,
+                    Some(CaveData {
+                        first_pos: (3, 2),
+                        second_pos: (2, 1),
+                        gem_pos: Some((1, 2)),
+                    }),
+                ),
+                stamina_budget: 10,
+                weight_budget: 2,
+                ladder_unlocked: true,
+                rope_unlocked: true,
+                potion_unlocked: true,
+                rewind_unlocked: false,
+            },
+            Level {
+                map: Map::new(
+                    vec![
                         vec![7, 7, 7, 6],
                         vec![6, 5, 5, 5],
                         vec![3, 3, 3, 3],
@@ -270,18 +325,20 @@ pub fn init_level_manager(mut commands: Commands) {
             Level {
                 map: Map::new(
                     vec![
-                        vec![4, 5, 5, 6, 7, 6, 5],
-                        vec![3, 4, 4, 4, 4, 4, 3],
-                        vec![2, 2, 1, 2, 3, 2, 1],
+                        vec![6, 7, 6, 5],
+                        vec![4, 5, 4, 4],
+                        vec![3, 3, 3, 3],
+                        vec![1, 1, 1, 1],
                     ],
                     vec![
-                        vec![false, false, false, false, false, false, false],
-                        vec![false, false, false, false, false, false, false],
-                        vec![false, true, false, false, false, false, false],
+                        vec![false, false, false, false],
+                        vec![false, false, false, false],
+                        vec![false, false, false, false],
+                        vec![false, false, false, false],
                     ],
-                    (1, 2),
-                    (5, 0),
-                    Some((2, 2)),
+                    (1, 3),
+                    (1, 1),
+                    Some((2, 3)),
                     None,
                 ),
                 stamina_budget: 8,

@@ -22,6 +22,8 @@ pub struct AudioAssets {
     pub teleport: Handle<AudioSource>,
     #[asset(path = "audio/pickup.ogg")]
     pub pickup: Handle<AudioSource>,
+    #[asset(path = "audio/error.ogg")]
+    pub error: Handle<AudioSource>,
 }
 
 #[derive(Resource)]

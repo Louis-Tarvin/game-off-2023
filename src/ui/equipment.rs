@@ -331,7 +331,7 @@ pub fn draw_equimpment_cards(
                     EquipmentInfo {
                         variant: Equipment::Rewind,
                         name: "Rune of Rewind".to_string(),
-                        description: "Once placed you have 5 turns until you are teleported back to the location it was placed, reclaiming any lost stamina (placed equipment remains).".to_string(),
+                        description: "Once placed you have 5 turns until you are teleported back to the location it was placed, reclaiming any stamina spent since. Equipment placed/picked up remains.".to_string(),
                         weight: 1,
                     },
                     texture_assets.rune_icon.clone()

@@ -55,6 +55,7 @@ pub fn handle_rope_input(
                 || grid_facing_y < 0
                 || grid_facing_y >= map.grid_heights.len() as i16
             {
+                sound_channel.play(audio_assets.error.clone());
                 return; // out of bounds
             }
             let height_diff = player_height as i16
@@ -97,9 +98,13 @@ pub fn handle_rope_input(
                             v.insert(entity);
                             player_history.0.push(PlayerHistoryEvent::PlaceRope(key));
                             sound_channel.play(audio_assets.pop.clone());
+                        } else {
+                            sound_channel.play(audio_assets.error.clone());
                         }
                     }
                 }
+            } else {
+                sound_channel.play(audio_assets.error.clone());
             }
         }
     }

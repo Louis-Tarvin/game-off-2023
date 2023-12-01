@@ -482,19 +482,6 @@ impl Player {
                             state: PlayerState::Standing(direction),
                         })
                     }
-                } else if heights[new_y][new_x] > ladder_state.elevation {
-                    {
-                        // climb off ladder
-                        Some(Self {
-                            stamina: self.stamina,
-                            grid_pos_x: new_x as u8,
-                            grid_pos_y: new_y as u8,
-                            state: PlayerState::Climbing(ClimbingState {
-                                direction,
-                                elevation: ladder_state.elevation + 1,
-                            }),
-                        })
-                    }
                 } else {
                     None
                 }
@@ -683,6 +670,8 @@ fn player_input(
                     _ => unreachable!(),
                 };
             }
+        } else {
+            sound_channel.play(audio_assets.error.clone());
         }
     }
 }

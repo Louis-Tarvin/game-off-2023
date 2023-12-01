@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{
     cave::HasGem,
     level_manager::LevelManager,
-    player::Player,
+    player::{Player, PlayerState},
     states::{level::DespawnOnTransition, loading::FontAssets},
     util::CardinalDirection,
 };
@@ -222,25 +222,45 @@ pub fn draw_key(parent: &mut ChildBuilder, font: Handle<Font>, key: char) {
 }
 
 pub fn update_stamina_costs(
-    player: Query<&Player, Changed<Player>>,
+    mut player: Query<&mut Player, Changed<Player>>,
     level_manager: Res<LevelManager>,
     mut stamina_costs: ResMut<StaminaCosts>,
     has_gem: Res<HasGem>,
 ) {
-    if let Ok(player) = player.get_single() {
+    if let Ok(mut player) = player.get_single_mut() {
         let map = &level_manager.get_current_level().map;
-        stamina_costs.north = player
-            .go(CardinalDirection::North, map, has_gem.0)
-            .map(|p| (player.stamina - p.stamina) as u8);
-        stamina_costs.east = player
-            .go(CardinalDirection::East, map, has_gem.0)
-            .map(|p| (player.stamina - p.stamina) as u8);
-        stamina_costs.south = player
-            .go(CardinalDirection::South, map, has_gem.0)
-            .map(|p| (player.stamina - p.stamina) as u8);
-        stamina_costs.west = player
-            .go(CardinalDirection::West, map, has_gem.0)
-            .map(|p| (player.stamina - p.stamina) as u8);
+        if let PlayerState::Standing(player_direction) = player.state {
+            player.state = PlayerState::Standing(CardinalDirection::North);
+            stamina_costs.north = player
+                .go(CardinalDirection::North, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+            player.state = PlayerState::Standing(CardinalDirection::East);
+            stamina_costs.east = player
+                .go(CardinalDirection::East, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+            player.state = PlayerState::Standing(CardinalDirection::South);
+            stamina_costs.south = player
+                .go(CardinalDirection::South, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+            player.state = PlayerState::Standing(CardinalDirection::West);
+            stamina_costs.west = player
+                .go(CardinalDirection::West, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+            player.state = PlayerState::Standing(player_direction);
+        } else {
+            stamina_costs.north = player
+                .go(CardinalDirection::North, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+            stamina_costs.east = player
+                .go(CardinalDirection::East, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+            stamina_costs.south = player
+                .go(CardinalDirection::South, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+            stamina_costs.west = player
+                .go(CardinalDirection::West, map, has_gem.0)
+                .map(|p| (player.stamina - p.stamina) as u8);
+        }
     }
 }
 
